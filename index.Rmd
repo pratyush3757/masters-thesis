@@ -167,7 +167,7 @@ space-before-code-block: 10pt
 space-after-code-block: 8pt
 
 ### linespacing ###
-linespacing: 22pt plus2pt # 22pt is official for submission & library copies
+linespacing: 20pt plus2pt
 frontmatter-linespacing: 17pt plus1pt minus1pt #spacing in roman-numbered pages (acknowledgments, table of contents, etc.)
 
 ### title page

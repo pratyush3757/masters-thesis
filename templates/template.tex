@@ -36,6 +36,8 @@
 \usepackage{xurl}
 % change the default coloring of links to something sensible
 \usepackage{xcolor}
+% change the alignment, this one provides better alignment with hyphenation (breaks words)
+\usepackage{ragged2e}
 
 $if(linkcolor-rgb)$
 \definecolor{mylinkcolor}{RGB}{$linkcolor-rgb$}
@@ -305,6 +307,9 @@ $if(degreedate)$\degreedate{$degreedate$}$endif$
 
 %%%%% THE ACTUAL DOCUMENT STARTS HERE
 \begin{document}
+
+%%%%% CHANGE TO LEFT-ALIGNED
+\RaggedRight
 
 %%%%% CHOOSE YOUR LINE SPACING HERE
 % This is the official option.  Use it for your submission copy and library copy:
