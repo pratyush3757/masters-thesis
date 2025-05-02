@@ -440,33 +440,34 @@ There are a few factors that may influence the program to not behave correctly:\
   The device's environment is adversarial. Eg. A nuclear plant's control panel.
 \end{enumerate}
 
-\href{}{x define control flow x}
-For factors 1-2, there are techniques like testing, fuzzing, \href{}{x formal verification \ldots{} x}
-that try to minimize the software/hardware bugs. \href{}{x extend this \ldots{} x}
+\sethlcolor{pink}\hl{define control flow}\sethlcolor{correctioncolor}
+For factors 1-2, there are techniques like testing, fuzzing, \sethlcolor{pink}\hl{formal verification \ldots{}}\sethlcolor{correctioncolor}
+that try to minimize the software/hardware bugs. \sethlcolor{pink}\hl{extend this \ldots{}}\sethlcolor{correctioncolor}
 
 For factor 3, there are various types of attacks that are possible ranging from
 Denial of Service to Information Leak.
 Our focus is on preventing the control flow of the program to not change,
-and for that, the techniques come under the term Control Flow Integrity (CFI).\href{sok}{??}
+and for that, the techniques come under the term Control Flow Integrity (CFI).\href{}{?? sok}
 
 But what if the adversary is the device's environment like factor 4?
 Or what do we do about the fact that we still cannot guarantee that the program is secure?
-\href{}{x As stated by Anon: security is an arms race, no system is fully secure. x}\href{}{??}
-We need to atleast be able to prove in some way that the program behaved as intended.
+\sethlcolor{pink}\hl{As stated by Anon: security is an arms race, no system is fully secure.}\sethlcolor{correctioncolor}\href{}{??}
+We need to at-least be able to prove in some way that the program behaved as intended.
 
 For simple programs that process an input to give a deterministic output like
 counting prime numbers or calculators, it is easy to just verify the output.
 But for non-deterministic or complex programs with side-effects (changes to the
 system or device - like writing to a file, or moving a robot arm), verifying the
-output is not feasible. {[}x One way is to instrument the system to check that the
-contol flow of the program is as expected, which in turn may indicate
-that the program ran correctly. x{]} And for this instrumentation, the set of techniques is called Control Flow
+output is not feasible. \sethlcolor{pink}\hl{One way is to instrument the system to check that the
+control flow of the program is as expected, which in turn may indicate
+that the program ran correctly.}\sethlcolor{correctioncolor}
+And for this instrumentation, the set of techniques is called Control Flow
 Attestation (CFA).
 
 \section{Control Flow Techniques}\label{control-flow-techniques}
 
 Let us now look at both CFI and CFA techniques in detail to know their aims and the current
-capabilities {[}x afforded to us by them. x{]}
+capabilities \sethlcolor{pink}\hl{afforded to us by them.}\sethlcolor{correctioncolor}
 
 \subsection{CFI}\label{cfi}
 
@@ -488,8 +489,9 @@ capabilities {[}x afforded to us by them. x{]}
   Side channels
 \item
   \ldots{}
-  \href{}{PAC + BTI discussed in Arm Specifics Section}
 \end{itemize}
+
+\sethlcolor{pink}\hl{PAC + BTI discussed in Arm Specifics Section}\sethlcolor{correctioncolor}
 
 \subsection{CFA}\label{cfa}
 
@@ -497,12 +499,13 @@ capabilities {[}x afforded to us by them. x{]}
 
 \subsubsection{General Overview of the process}\label{general-overview-of-the-process}
 
-\href{}{x figure - CFA overview x}
+\sethlcolor{pink}\hl{figure - CFA overview}\sethlcolor{correctioncolor}
+
 For CFA, the general workflow has 2 separate agents, a prover (Prv) and a remote verifier (Vrf).
 The Vrf sends a request to Prv with a cryptographic challenge (Eg. a \emph{nonce}).
-As a response to the challenge, the Prover executes the program with the given
+As a response to the challenge, Prv executes the program with the given
 input (either implicitly or explicitly given in the request).
-It then generates a report of execution (CFreport), and sends it to the Verifier.
+It then generates a report of execution (CFreport), and sends it to Vrf.
 This CFreport is signed using the challenge sent by Vrf, and contains the output of the program and an
 authenticated log (CFlog) of the control flow taken by the program during execution.
 
@@ -531,23 +534,21 @@ deviations and determine the cause.
   CFLAT with technical details + limitations
 \item
   OAT with improvements + limitations
-  \href{}{x
-  CFLAT and OAT had logging events for each Conditional Branch, Indirect function call, and Function exit.
+  \sethlcolor{pink}\hl{CFLAT and OAT had logging events for each Conditional Branch, Indirect function call, and Function exit.
   Additionally, CLFAT also had events for Unconditional Branches and Direct function calls.
-  All of these events has a domain transition to TEE for logging.
-  x}
+  All of these events has a domain transition to TEE for logging.}\sethlcolor{correctioncolor}
 \item
   Mention BLAST, just brief explaination. Link to its section.
 \item
   \ldots{}
-  \href{}{x Also mention constant reporting x}
+  \sethlcolor{pink}\hl{Also mention constant reporting}\sethlcolor{correctioncolor}
 \end{itemize}
 
 \section{ARM Specifics}\label{arm-specifics}
 
-Now that we know {[}x what CFI and CFA are x{]}, we can take a look at platform specific solutions.
+Now that we know \sethlcolor{pink}\hl{what CFI and CFA are}\sethlcolor{correctioncolor}, we can take a look at platform specific solutions.
 For this work, we choose ARM as it's common in embedded applications\href{}{},
-{[}x which is a popular use-case where CFI and CFA techniques are often applied x{]}.\href{}{??}
+\sethlcolor{pink}\hl{which is a popular use-case where CFI and CFA techniques are often applied}\sethlcolor{correctioncolor}.\href{}{??}
 
 Before diving into the implementation details, we'll first discuss the ARM ABI
 (ARMv8-A specifically) and its calling conventions to brush up the required background knowledge.
@@ -582,7 +583,8 @@ We'll also discuss some architecture level features that can be used for CFI and
 
 \subsection{ARM TrustZone}\label{arm-trustzone}
 
-\href{}{x TEE arch image Arm docs 3.1's figure x}
+\sethlcolor{pink}\hl{TEE arch image Arm docs 3.1's figure}\sethlcolor{correctioncolor}
+
 ARM TrustZone\href{}{??} is Arm's security architecture in Arm A-profile architecture.
 It provides 2 execution environments with hardware enforced isolation between them:
 1. Normal World or Rich Execution Environment (REE) - It runs the regular software
@@ -596,23 +598,23 @@ There are 2 security states Arm architecture - Non-secure and Secure which map
 to Rich and Trusted worlds respectively.
 Exception levels are the levels of software execution privileges.
 These mappings are specified in \href{}{TEE arch image}.
-The states are often written with their exeption levels like:
+The states are often written with their exception levels like:
 - \texttt{NS.EL2}: Non-secure state, Exception level 2
 - \texttt{S.EL2}: Secure state, Exception level 2
 
 \emph{Note that EL3 is always in Secure State.}
 
-\href{}{x smc call convention \ldots ARMTZ docs 5.1's figure x}
+\sethlcolor{pink}\hl{\texttt{smc} call convention \ldots ARMTZ docs 5.1's figure}\sethlcolor{correctioncolor}
 This isolation is bridged by the usage of Secure Monitor Call (SMC) instruction.
 The \texttt{smc} instruction not available in EL0 in either of the Security States.
 The processes in Rich OS would call the user-space library (TEE Client),
 which would in turn perform a low level call to the TrustZone driver in Rich OS.
 The driver would then perform a \texttt{smc} call with arguments to the Secure Monitor.
-The Secure Monitor determines the matching handler in TEE and dispaches it accordingly.
+The Secure Monitor determines the matching handler in TEE and dispatches it accordingly.
 
 \subsection{OP-TEE}\label{op-tee}
 
-\href{}{x optee arch figure\ldots.arm docs 5.1.3's fig x}
+\sethlcolor{pink}\hl{optee arch figure\ldots.arm docs 5.1.3's fig}\sethlcolor{correctioncolor}
 One example of a Trusted Kernel is OP-TEE. It was developed by ST-Ericsson,
 and is now an open source project maintained by Linaro.\href{}{??}.
 The rich applications call OP-TEE Driver through TEE Client API. The Driver
@@ -622,33 +624,35 @@ is then responsible for the communication with the OP-TEE kernel.
 
 \subsection{BLAST}\label{blast}
 
-As mentioned in \href{}{x CFA/History/CLFAT-OAT x}, attestation has rarely targeted whole programs.\href{}{??}
+As mentioned in \sethlcolor{pink}\hl{CFA/History/CLFAT-OAT}\sethlcolor{correctioncolor}, attestation has rarely targeted whole programs.\href{}{??}
 And their approaches did not scale when applied to whole program paths, mainly
-due to the sheer number of domain transitions between REE/TEE.\href{BLAST}{??}
+due to the sheer number of domain transitions between REE/TEE.\href{}{?? BLAST}
 BLAST\href{}{??} was developed in 2023 with whole program paths in mind.
 They took inspiration from program profiling literature to decrease the said overheads.
 
 \subsubsection{How it works}\label{how-it-works}
 
-\href{}{x It is a LLVM pass\ldots{} x}
+\sethlcolor{pink}\hl{It is a LLVM pass\ldots{}}\sethlcolor{correctioncolor}
+
 BLAST reserves 2 registers - called \texttt{BLReg} and \texttt{LogReg} - for the required instrumentation.
+
 \emph{Local Logging:}\\
 If we need fine-grained logging, but cannot afford the domain switches, why not log inside the REE?
 BLAST does this by pre-allocating a log inside the process's address space,
-and adds SFI measures \href{}{x discussed in SFI x} to protect its integrity.
+and adds SFI measures \sethlcolor{pink}\hl{discussed in SFI}\sethlcolor{correctioncolor} to protect its integrity.
 The log is shared between REE and TEE, and its permissions are managed by the TEE.
 It is then divided in 2 halves, with each half ending with a write-protected page called \texttt{sentinel\ page}.
 \texttt{LogReg} is a pointer to the head of the log, and BLAST simply adds the log entry
 and increments its value.
 
-\href{}{x log figure x}
+\sethlcolor{pink}\hl{log figure}\sethlcolor{correctioncolor}
 
 When a half is filled, \texttt{LogReg} reaches a sentinel page and a hardware fault is generated on write.
 The fault handler is then executed in the TEE, which:
 1. Makes the \texttt{LogReg} point to the other half.
 2. Adds write-protection to the filled half, to ensure it isn't overwritten.
 3. Commits the log's state to the TEE.
-4. After the log is committed, it makes the half writeable again.
+4. After the log is committed, it makes the half writable again.
 
 \emph{Software Fault Isolation (SFI)}
 Sentinel pages are write-protected, but what about the regular log?
@@ -657,17 +661,24 @@ simple store instructions can still modify the log value. Only the instrumentati
 instructions inserted as part of the BLAST pass should be allowed to append to the log.
 
 To ensure this, BLAST adds instrumentation after each store instruction to:
-1. Fetch the store address and the log's address.
-2. Check that the store address doesn't lie inside the log.
 
-\href{}{x sfi instrumentation figure x}
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Fetch the store address and the log's address.
+\item
+  Check that the store address doesn't lie inside the log.
+\end{enumerate}
+
+\sethlcolor{pink}\hl{sfi instrumentation figure}\sethlcolor{correctioncolor}
 
 The log size is statically defined, and it is also aligned to that size.
 i.e.~a 1MB log would be aligned to 1MB address. This makes the check equivalent to a mask and subtract.
 
 The reason for adding the check \emph{after} the store is to further ensure that a
 CFI attack would not be able to bypass the check by jumping to the store.
-The check would necessarity be run after the store, and therefore aborting the
+The check would necessarily be run after the store, and therefore aborting the
 execution if the log had been modified.
 
 \begin{itemize}
@@ -707,7 +718,7 @@ execution if the log had been modified.
 \begin{itemize}
 \tightlist
 \item
-  {[}x note on pg 2690 blast x{]}
+  \sethlcolor{pink}\hl{note on pg 2690 blast}\sethlcolor{correctioncolor}
 \end{itemize}
 
 \section{What can be done to add Integrity guarantees?}\label{what-can-be-done-to-add-integrity-guarantees}

@@ -16,7 +16,7 @@ documentclass: book
 \minitoc <!-- this will include a mini table of contents-->
 
 ## Why?
-- [x note on pg 2690 blast x]
+- [note on pg 2690 blast]{highlight="pink"}
 
 ## What can be done to add Integrity guarantees?
 

@@ -31,32 +31,33 @@ There are a few factors that may influence the program to not behave correctly:[
 3. A malicious actor attacks the device/program to modify the execution.
 4. The device's environment is adversarial. Eg. A nuclear plant's control panel.
 
-[x define control flow x]()
-For factors 1-2, there are techniques like testing, fuzzing, [x formal verification ... x]()
-that try to minimize the software/hardware bugs. [x extend this ... x]()
+[define control flow]{highlight="pink"}
+For factors 1-2, there are techniques like testing, fuzzing, [formal verification ...]{highlight="pink"}
+that try to minimize the software/hardware bugs. [extend this ...]{highlight="pink"}
 
 For factor 3, there are various types of attacks that are possible ranging from 
 Denial of Service to Information Leak.
 Our focus is on preventing the control flow of the program to not change,
-and for that, the techniques come under the term Control Flow Integrity (CFI).[??](sok)
+and for that, the techniques come under the term Control Flow Integrity (CFI).[?? sok]()
 
 But what if the adversary is the device's environment like factor 4? 
 Or what do we do about the fact that we still cannot guarantee that the program is secure?
-[x As stated by Anon: security is an arms race, no system is fully secure. x]()[??]()
-We need to atleast be able to prove in some way that the program behaved as intended.
+[As stated by Anon: security is an arms race, no system is fully secure.]{highlight="pink"}[??]()
+We need to at-least be able to prove in some way that the program behaved as intended.
 
 For simple programs that process an input to give a deterministic output like 
 counting prime numbers or calculators, it is easy to just verify the output.
 But for non-deterministic or complex programs with side-effects (changes to the 
 system or device - like writing to a file, or moving a robot arm), verifying the 
-output is not feasible. [x One way is to instrument the system to check that the 
-contol flow of the program is as expected, which in turn may indicate 
-that the program ran correctly. x] And for this instrumentation, the set of techniques is called Control Flow 
+output is not feasible. [One way is to instrument the system to check that the 
+control flow of the program is as expected, which in turn may indicate 
+that the program ran correctly.]{highlight="pink"} 
+And for this instrumentation, the set of techniques is called Control Flow 
 Attestation (CFA).
 
 ## Control Flow Techniques
 Let us now look at both CFI and CFA techniques in detail to know their aims and the current 
-capabilities [x afforded to us by them. x]
+capabilities [afforded to us by them.]{highlight="pink"}
 
 ### CFI
 
@@ -70,19 +71,21 @@ capabilities [x afforded to us by them. x]
 - Data Manipulation
 - Side channels
 - ...
-[PAC + BTI discussed in Arm Specifics Section]()
+
+[PAC + BTI discussed in Arm Specifics Section]{highlight="pink"}
 
 ### CFA
 
 #### Why?
 
 #### General Overview of the process
-[x figure - CFA overview x]()
+[figure - CFA overview]{highlight="pink"}
+
 For CFA, the general workflow has 2 separate agents, a prover (Prv) and a remote verifier (Vrf). 
 The Vrf sends a request to Prv with a cryptographic challenge (Eg. a *nonce*).
-As a response to the challenge, the Prover executes the program with the given 
+  As a response to the challenge, Prv executes the program with the given 
 input (either implicitly or explicitly given in the request).
-It then generates a report of execution (CFreport), and sends it to the Verifier.
+It then generates a report of execution (CFreport), and sends it to Vrf.
 This CFreport is signed using the challenge sent by Vrf, and contains the output of the program and an 
 authenticated log (CFlog) of the control flow taken by the program during execution.
 
@@ -105,19 +108,19 @@ deviations and determine the cause.
 - History
 - CFLAT with technical details + limitations
 - OAT with improvements + limitations
-[x
+[
 CFLAT and OAT had logging events for each Conditional Branch, Indirect function call, and Function exit.
 Additionally, CLFAT also had events for Unconditional Branches and Direct function calls.
 All of these events has a domain transition to TEE for logging.
-x]()
+]{highlight="pink"}
 - Mention BLAST, just brief explaination. Link to its section.
 - ...
-[x Also mention constant reporting x]()
+[Also mention constant reporting]{highlight="pink"}
 
 ## ARM Specifics
-Now that we know [x what CFI and CFA are x], we can take a look at platform specific solutions.
+Now that we know [what CFI and CFA are]{highlight="pink"}, we can take a look at platform specific solutions.
 For this work, we choose ARM as it's common in embedded applications[](), 
-[x which is a popular use-case where CFI and CFA techniques are often applied x].[??]()
+[which is a popular use-case where CFI and CFA techniques are often applied]{highlight="pink"}.[??]()
 
 Before diving into the implementation details, we'll first discuss the ARM ABI 
 (ARMv8-A specifically) and its calling conventions to brush up the required background knowledge.
@@ -136,7 +139,8 @@ We'll also discuss some architecture level features that can be used for CFI and
 ### BTI
 
 ### ARM TrustZone
-[x TEE arch image Arm docs 3.1's figure x]()
+[TEE arch image Arm docs 3.1's figure]{highlight="pink"}
+
 ARM TrustZone[??]() is Arm's security architecture in Arm A-profile architecture.
 It provides 2 execution environments with hardware enforced isolation between them:
 1. Normal World or Rich Execution Environment (REE) - It runs the regular software 
@@ -150,22 +154,22 @@ There are 2 security states Arm architecture - Non-secure and Secure which map
 to Rich and Trusted worlds respectively. 
 Exception levels are the levels of software execution privileges. 
 These mappings are specified in [TEE arch image](). 
-The states are often written with their exeption levels like:
+The states are often written with their exception levels like:
 - `NS.EL2`: Non-secure state, Exception level 2
 - `S.EL2`: Secure state, Exception level 2
 
 *Note that EL3 is always in Secure State.*
 
-[x smc call convention ...ARMTZ docs 5.1's figure x]()
+[`smc` call convention ...ARMTZ docs 5.1's figure]{highlight="pink"}
 This isolation is bridged by the usage of Secure Monitor Call (SMC) instruction.
 The `smc` instruction not available in EL0 in either of the Security States.
 The processes in Rich OS would call the user-space library (TEE Client),
 which would in turn perform a low level call to the TrustZone driver in Rich OS.
 The driver would then perform a `smc` call with arguments to the Secure Monitor.
-The Secure Monitor determines the matching handler in TEE and dispaches it accordingly.
+The Secure Monitor determines the matching handler in TEE and dispatches it accordingly.
 
 ### OP-TEE
-[x optee arch figure....arm docs 5.1.3's fig x]()
+[optee arch figure....arm docs 5.1.3's fig]{highlight="pink"}
 One example of a Trusted Kernel is OP-TEE. It was developed by ST-Ericsson, 
 and is now an open source project maintained by Linaro.[??]().
 The rich applications call OP-TEE Driver through TEE Client API. The Driver 
@@ -174,32 +178,34 @@ is then responsible for the communication with the OP-TEE kernel.
 ## Primary Works
 
 ### BLAST
-As mentioned in [x CFA/History/CLFAT-OAT x](), attestation has rarely targeted whole programs.[??]()
+As mentioned in [CFA/History/CLFAT-OAT]{highlight="pink"}, attestation has rarely targeted whole programs.[??]()
 And their approaches did not scale when applied to whole program paths, mainly 
-due to the sheer number of domain transitions between REE/TEE.[??](BLAST)
+due to the sheer number of domain transitions between REE/TEE.[?? BLAST]()
 BLAST[??]() was developed in 2023 with whole program paths in mind.
 They took inspiration from program profiling literature to decrease the said overheads.
 
 #### How it works
-[x It is a LLVM pass... x]()
+[It is a LLVM pass...]{highlight="pink"}
+
 BLAST reserves 2 registers - called `BLReg` and `LogReg` - for the required instrumentation.
+
 *Local Logging:*  
 If we need fine-grained logging, but cannot afford the domain switches, why not log inside the REE?
 BLAST does this by pre-allocating a log inside the process's address space,
-and adds SFI measures [x discussed in SFI x]() to protect its integrity.
+and adds SFI measures [discussed in SFI]{highlight="pink"} to protect its integrity.
 The log is shared between REE and TEE, and its permissions are managed by the TEE.
 It is then divided in 2 halves, with each half ending with a write-protected page called `sentinel page`.
 `LogReg` is a pointer to the head of the log, and BLAST simply adds the log entry 
 and increments its value.
 
-[x log figure x]()
+[log figure]{highlight="pink"}
 
 When a half is filled, `LogReg` reaches a sentinel page and a hardware fault is generated on write.
 The fault handler is then executed in the TEE, which:
 1. Makes the `LogReg` point to the other half.
 2. Adds write-protection to the filled half, to ensure it isn't overwritten.
 3. Commits the log's state to the TEE.
-4. After the log is committed, it makes the half writeable again.
+4. After the log is committed, it makes the half writable again.
 
 *Software Fault Isolation (SFI)*
 Sentinel pages are write-protected, but what about the regular log? 
@@ -208,17 +214,18 @@ simple store instructions can still modify the log value. Only the instrumentati
 instructions inserted as part of the BLAST pass should be allowed to append to the log.
 
 To ensure this, BLAST adds instrumentation after each store instruction to:
+
 1. Fetch the store address and the log's address.
 2. Check that the store address doesn't lie inside the log.
 
-[x sfi instrumentation figure x]()
+[sfi instrumentation figure]{highlight="pink"}
 
 The log size is statically defined, and it is also aligned to that size. 
 i.e. a 1MB log would be aligned to 1MB address. This makes the check equivalent to a mask and subtract.
 
 The reason for adding the check *after* the store is to further ensure that a 
 CFI attack would not be able to bypass the check by jumping to the store.
-The check would necessarity be run after the store, and therefore aborting the 
+The check would necessarily be run after the store, and therefore aborting the 
 execution if the log had been modified.
 
 - Optimizing log entries using BL
