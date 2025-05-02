@@ -98,6 +98,8 @@ $endif$
 \soulregister\pageref7
 
 %%%%% FIXING / ADDING THINGS THAT'S SPECIAL TO R MARKDOWN'S USE OF LATEX TEMPLATES
+%pandoc unbounded added for pandoc 3.1.2+
+\newcommand{\pandocbounded}[1]{#1}
 % pandoc puts lists in 'tightlist' command when no space between bullet points in Rmd file,
 % so we add this command to the template
 \providecommand{\tightlist}{%
