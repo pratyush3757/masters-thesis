@@ -45,15 +45,15 @@ title: |
   `oxforddown`: \
   An Oxford University Thesis \
   Template for R Markdown
-author: Author Name
-college: Your College
-university: University of Oxford
+author: Pratyush Choudhary
+college: Indian Institute of Gandhinagar
+#university: Indian Institute of Gandhinagar
 university-logo: templates/beltcrest.pdf
 university-logo-width: 5cm
 submitted-text: A thesis submitted for the degree of
-degree: Doctor of Philosophy
-degreedate: Michaelmas 2018
-dedication: For Yihui Xie
+degree: Master of Technology
+degreedate: May 2025
+#dedication: For Yihui Xie
 acknowledgements: |
   `r paste(readLines("front-and-back-matter/_acknowledgements.Rmd"), collapse = '\n  ')`
 show-acknowledgements-in-toc: false
