@@ -36,6 +36,8 @@
 \usepackage{xurl}
 % change the default coloring of links to something sensible
 \usepackage{xcolor}
+% change the alignment, this one provides better alignment with hyphenation (breaks words)
+\usepackage{ragged2e}
 
 \definecolor{mylinkcolor}{RGB}{0,0,139}
 \definecolor{myurlcolor}{RGB}{0,0,139}
@@ -192,6 +194,7 @@
 
 %%%%% SELECT YOUR DRAFT OPTIONS
 % This adds a "DRAFT" footer to every normal page.  (The first page of each chapter is not a "normal" page.)
+\fancyfoot[C]{\emph{DRAFT on \today}}
 
 % IP feb 2021: option to include line numbers in PDF
 
@@ -256,9 +259,12 @@ Template for R Markdown}
 %%%%% THE ACTUAL DOCUMENT STARTS HERE
 \begin{document}
 
+%%%%% CHANGE TO LEFT-ALIGNED
+\RaggedRight
+
 %%%%% CHOOSE YOUR LINE SPACING HERE
 % This is the official option.  Use it for your submission copy and library copy:
-\setlength{\textbaselineskip}{22pt plus2pt}
+\setlength{\textbaselineskip}{20pt plus2pt}
 % This is closer spacing (about 1.5-spaced) that you might prefer for your personal copies:
 %\setlength{\textbaselineskip}{18pt plus2pt minus1pt}
 
@@ -276,7 +282,7 @@ Template for R Markdown}
 %
 % Customise title page
 %
-\def\crest{{\includegraphics[width=5cm]{templates/beltcrest.pdf}}}
+\def\crest{{\includegraphics[width=5cm]{templates/iitgnlogo.png}}}
 \renewcommand{\university}{}
 \renewcommand{\submittedtext}{A thesis submitted for the degree of}
 \renewcommand{\thesistitlesize}{\fontsize{22pt}{28pt}\selectfont}
@@ -418,14 +424,14 @@ Quite a nice prickly friend.
 
 There are digital devices all around us running code written by people. It can be
 to handle a simple electric toothbrush's timer, or to move a robot arm for a surgery.
-And all programs are not created equal. Some are mission-critical pieces of code that
+And, all programs are not created equal. Some are mission-critical pieces of code that
 may require high levels of scrutiny at each step of creation, lest they fail and
 result in disasters - financial or otherwise.
 
 For such a program running on a device, we need to ensure that it ran correctly
 (meaning - as intended by the logic of the code).
 But just writing good code doesn't save it from other factors that are present while running it.
-There are a few factors that may influence the program to not behave correctly:\href{}{??}
+There are a few factors that may influence the program to not behave correctly:{[}?? CITEME{]}
 
 \begin{enumerate}
 \def\labelenumi{\arabic{enumi}.}
@@ -441,13 +447,14 @@ There are a few factors that may influence the program to not behave correctly:\
 \end{enumerate}
 
 \sethlcolor{pink}\hl{define control flow}\sethlcolor{correctioncolor}
+
 For factors 1-2, there are techniques like testing, fuzzing, \sethlcolor{pink}\hl{formal verification \ldots{}}\sethlcolor{correctioncolor}
 that try to minimize the software/hardware bugs. \sethlcolor{pink}\hl{extend this \ldots{}}\sethlcolor{correctioncolor}
 
 For factor 3, there are various types of attacks that are possible ranging from
 Denial of Service to Information Leak.
 Our focus is on preventing the control flow of the program to not change,
-and for that, the techniques come under the term Control Flow Integrity (CFI).\href{}{?? sok}
+and for that, the techniques come under the term Control Flow Integrity (CFI).{[}?? sok{]}
 
 But what if the adversary is the device's environment like factor 4?
 Or what do we do about the fact that we still cannot guarantee that the program is secure?
@@ -534,6 +541,7 @@ deviations and determine the cause.
   CFLAT with technical details + limitations
 \item
   OAT with improvements + limitations
+\item
   \sethlcolor{pink}\hl{CFLAT and OAT had logging events for each Conditional Branch, Indirect function call, and Function exit.
   Additionally, CLFAT also had events for Unconditional Branches and Direct function calls.
   All of these events has a domain transition to TEE for logging.}\sethlcolor{correctioncolor}
@@ -547,7 +555,7 @@ deviations and determine the cause.
 \section{ARM Specifics}\label{arm-specifics}
 
 Now that we know \sethlcolor{pink}\hl{what CFI and CFA are}\sethlcolor{correctioncolor}, we can take a look at platform specific solutions.
-For this work, we choose ARM as it's common in embedded applications\href{}{},
+For this work, we choose ARM as it's common in embedded applications{[}?? CITEME{]},
 \sethlcolor{pink}\hl{which is a popular use-case where CFI and CFA techniques are often applied}\sethlcolor{correctioncolor}.\href{}{??}
 
 Before diving into the implementation details, we'll first discuss the ARM ABI
@@ -585,26 +593,40 @@ We'll also discuss some architecture level features that can be used for CFI and
 
 \sethlcolor{pink}\hl{TEE arch image Arm docs 3.1's figure}\sethlcolor{correctioncolor}
 
-ARM TrustZone\href{}{??} is Arm's security architecture in Arm A-profile architecture.
+ARM TrustZone{[}?? ARMTZ{]} is Arm's security architecture in Arm A-profile architecture.
 It provides 2 execution environments with hardware enforced isolation between them:
-1. Normal World or Rich Execution Environment (REE) - It runs the regular software
-stack with a complex OS, hypervisor, etc. The attack surface is considered to be large,
-and the execution isn't trusted.
-2. Trusted World/Execution Environment (TEE) - It runs a simple and small software
-stack which is assumed to be trusted. It has its own trusted services and OS.
-It also has a smaller attack surface due to its simplicity and size.
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Normal World or Rich Execution Environment (REE) - It runs the regular software
+  stack with a complex OS, hypervisor, etc. The attack surface is considered to be large,
+  and the execution isn't trusted.
+\item
+  Trusted World/Execution Environment (TEE) - It runs a simple and small software
+  stack which is assumed to be trusted. It has its own trusted services and OS.
+  It also has a smaller attack surface due to its simplicity and size.
+\end{enumerate}
 
 There are 2 security states Arm architecture - Non-secure and Secure which map
 to Rich and Trusted worlds respectively.
 Exception levels are the levels of software execution privileges.
 These mappings are specified in \href{}{TEE arch image}.
 The states are often written with their exception levels like:
-- \texttt{NS.EL2}: Non-secure state, Exception level 2
-- \texttt{S.EL2}: Secure state, Exception level 2
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{NS.EL2}: Non-secure state, Exception level 2
+\item
+  \texttt{S.EL2}: Secure state, Exception level 2
+\end{itemize}
 
 \emph{Note that EL3 is always in Secure State.}
 
 \sethlcolor{pink}\hl{\texttt{smc} call convention \ldots ARMTZ docs 5.1's figure}\sethlcolor{correctioncolor}
+
 This isolation is bridged by the usage of Secure Monitor Call (SMC) instruction.
 The \texttt{smc} instruction not available in EL0 in either of the Security States.
 The processes in Rich OS would call the user-space library (TEE Client),
@@ -615,8 +637,9 @@ The Secure Monitor determines the matching handler in TEE and dispatches it acco
 \subsection{OP-TEE}\label{op-tee}
 
 \sethlcolor{pink}\hl{optee arch figure\ldots.arm docs 5.1.3's fig}\sethlcolor{correctioncolor}
+
 One example of a Trusted Kernel is OP-TEE. It was developed by ST-Ericsson,
-and is now an open source project maintained by Linaro.\href{}{??}.
+and is now an open source project maintained by Linaro.{[}?? OPTEE{]}.
 The rich applications call OP-TEE Driver through TEE Client API. The Driver
 is then responsible for the communication with the OP-TEE kernel.
 
@@ -626,17 +649,18 @@ is then responsible for the communication with the OP-TEE kernel.
 
 As mentioned in \sethlcolor{pink}\hl{CFA/History/CLFAT-OAT}\sethlcolor{correctioncolor}, attestation has rarely targeted whole programs.\href{}{??}
 And their approaches did not scale when applied to whole program paths, mainly
-due to the sheer number of domain transitions between REE/TEE.\href{}{?? BLAST}
-BLAST\href{}{??} was developed in 2023 with whole program paths in mind.
+due to the sheer number of domain transitions between REE/TEE.{[}?? BLAST{]}
+BLAST was developed in 2023 with whole program paths in mind.
 They took inspiration from program profiling literature to decrease the said overheads.
 
 \subsubsection{How it works}\label{how-it-works}
 
 \sethlcolor{pink}\hl{It is a LLVM pass\ldots{}}\sethlcolor{correctioncolor}
 
-BLAST reserves 2 registers - called \texttt{BLReg} and \texttt{LogReg} - for the required instrumentation.
+BLAST reserves 2 registers called \texttt{BLReg} and \texttt{LogReg} for the required instrumentation.
 
-\emph{Local Logging:}\\
+\paragraph{Local Logging:}\label{local-logging}
+
 If we need fine-grained logging, but cannot afford the domain switches, why not log inside the REE?
 BLAST does this by pre-allocating a log inside the process's address space,
 and adds SFI measures \sethlcolor{pink}\hl{discussed in SFI}\sethlcolor{correctioncolor} to protect its integrity.
@@ -649,12 +673,22 @@ and increments its value.
 
 When a half is filled, \texttt{LogReg} reaches a sentinel page and a hardware fault is generated on write.
 The fault handler is then executed in the TEE, which:
-1. Makes the \texttt{LogReg} point to the other half.
-2. Adds write-protection to the filled half, to ensure it isn't overwritten.
-3. Commits the log's state to the TEE.
-4. After the log is committed, it makes the half writable again.
 
-\emph{Software Fault Isolation (SFI)}
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Makes the \texttt{LogReg} point to the other half.
+\item
+  Adds write-protection to the filled half, to ensure it isn't overwritten.
+\item
+  Commits the log's state to the TEE.
+\item
+  After the log is committed, it makes the half writable again.
+\end{enumerate}
+
+\paragraph{Software Fault Isolation (SFI):}\label{software-fault-isolation-sfi}
+
 Sentinel pages are write-protected, but what about the regular log?
 Although \texttt{LogReg} is reserved, and cannot be used by other parts of the code,
 simple store instructions can still modify the log value. Only the instrumentation
@@ -674,40 +708,69 @@ To ensure this, BLAST adds instrumentation after each store instruction to:
 \sethlcolor{pink}\hl{sfi instrumentation figure}\sethlcolor{correctioncolor}
 
 The log size is statically defined, and it is also aligned to that size.
-i.e.~a 1MB log would be aligned to 1MB address. This makes the check equivalent to a mask and subtract.
+i.e.~a 1MB log would be aligned to 1MB address. This makes the check equivalent
+to a mask and subtract.
 
 The reason for adding the check \emph{after} the store is to further ensure that a
 CFI attack would not be able to bypass the check by jumping to the store.
 The check would necessarily be run after the store, and therefore aborting the
 execution if the log had been modified.
 
-\begin{itemize}
-\tightlist
-\item
-  Optimizing log entries using BL
-\end{itemize}
+\paragraph{Optimizing log entries:}\label{optimizing-log-entries}
+
+BLAST takes inspiration from profiling literature to place instrumentation in
+an optimal fashion. It uses Ball-Larus algorithm {[}?? Ball-Larus{]} to selectively
+add instrumentation to the edges of a CFG. The instrumentation manipulates the value of a counter,
+which at the end of the CFG would be between \texttt{0} and \texttt{N-1}. Where \texttt{N} is the number
+of acyclic paths in the CFG. This counter can be used to uniquely identify the
+runtime path that was taken by the function.
+
+This results in \texttt{2x} compact representation of paths compared to OAT's bit tracing,
+and it places instrumentation at fewer locations.{[}?? BLAST{]}
+
+\paragraph{WPP}\label{wpp}
+
+BLAST then takes the large log, and compactly represents it using a context-free
+grammar called WPP. It is an extension of Ball-Larus numbering, to build a single
+control flow path through the complete program.{[}?? BLAST, ?? WPP{]}
+This takes the log, that can grow upto MBs or even GBs in size, and converts into
+a WPP representation that's just a few hundred bytes big.
 
 \subsubsection{Outcome}\label{outcome}
 
 \subsubsection{Limitations}\label{limitations}
 
+The thread responsible of committing the log to TEE would have to run in parallel
+to the program. Single core settings had an average runtime overhead of 175\%
+as compared to 67\% of multi-core execution.{[}?? BLAST{]}
+
+Reserving 2 registers may cause compatibility issues, especially with programs
+that rely on inline assembly. But as shown by CFA+{[}?? CFA+{]},
+\sethlcolor{pink}\hl{it is not an issue??}\sethlcolor{correctioncolor}
+
 \subsection{CFA+}\label{cfa-1}
 
 \subsubsection{How it works}\label{how-it-works-1}
 
-\begin{itemize}
-\tightlist
-\item
-  Custom PAC
-\item
-  BTI
-\item
-  Logging?
-\end{itemize}
+\sethlcolor{pink}\hl{- Custom PAC
+- BTI
+- Logging?}\sethlcolor{correctioncolor}
 
 \subsubsection{Outcome}\label{outcome-1}
 
 \subsubsection{Limitations}\label{limitations-1}
+
+\sethlcolor{pink}\hl{One of the main limitations of CFA+ is that they do not mention what's their
+(logging policy)?? for attestation. They do not elaborate on whether they have
+fine-grained or course-grained CFA, or even what is their logging mechanism.
+The benchmarks report performance that is too good for the number of domain
+switches they'd need for committing the logs in TEE.}\sethlcolor{correctioncolor}
+Also, the attestation architecture diagram given indicates that the attestation
+agent is triggered on BTI violation, but the \sethlcolor{pink}\hl{text..where??}\sethlcolor{correctioncolor}
+mentions logs to have a violation field. The field indicates weather an entry was due to violation.
+This contradiction is not addressed in their paper.\sethlcolor{pink}\hl{verify this statement}\sethlcolor{correctioncolor}
+
+\sethlcolor{pink}\hl{rolling their own CFI which has XOR loophole (verify!)}\sethlcolor{correctioncolor}
 
 \chapter{Extending BLAST for CFI}\label{extending-blast-for-cfi}
 

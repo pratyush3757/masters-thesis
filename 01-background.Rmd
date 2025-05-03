@@ -17,14 +17,14 @@ bibliography: [bibliography/references.bib, bibliography/additional-references.b
 
 There are digital devices all around us running code written by people. It can be 
 to handle a simple electric toothbrush's timer, or to move a robot arm for a surgery.
-And all programs are not created equal. Some are mission-critical pieces of code that 
+And, all programs are not created equal. Some are mission-critical pieces of code that 
 may require high levels of scrutiny at each step of creation, lest they fail and 
 result in disasters - financial or otherwise.
 
 For such a program running on a device, we need to ensure that it ran correctly 
 (meaning - as intended by the logic of the code). 
 But just writing good code doesn't save it from other factors that are present while running it.
-There are a few factors that may influence the program to not behave correctly:[??]()
+There are a few factors that may influence the program to not behave correctly:[?? CITEME]
 
 1. A bug in the code that slipped past the review process.
 2. There's a flaw in the device that the code is running on.
@@ -32,13 +32,14 @@ There are a few factors that may influence the program to not behave correctly:[
 4. The device's environment is adversarial. Eg. A nuclear plant's control panel.
 
 [define control flow]{highlight="pink"}
+
 For factors 1-2, there are techniques like testing, fuzzing, [formal verification ...]{highlight="pink"}
 that try to minimize the software/hardware bugs. [extend this ...]{highlight="pink"}
 
 For factor 3, there are various types of attacks that are possible ranging from 
 Denial of Service to Information Leak.
 Our focus is on preventing the control flow of the program to not change,
-and for that, the techniques come under the term Control Flow Integrity (CFI).[?? sok]()
+and for that, the techniques come under the term Control Flow Integrity (CFI).[?? sok]
 
 But what if the adversary is the device's environment like factor 4? 
 Or what do we do about the fact that we still cannot guarantee that the program is secure?
@@ -83,7 +84,7 @@ capabilities [afforded to us by them.]{highlight="pink"}
 
 For CFA, the general workflow has 2 separate agents, a prover (Prv) and a remote verifier (Vrf). 
 The Vrf sends a request to Prv with a cryptographic challenge (Eg. a *nonce*).
-  As a response to the challenge, Prv executes the program with the given 
+As a response to the challenge, Prv executes the program with the given 
 input (either implicitly or explicitly given in the request).
 It then generates a report of execution (CFreport), and sends it to Vrf.
 This CFreport is signed using the challenge sent by Vrf, and contains the output of the program and an 
@@ -105,9 +106,11 @@ for the input. If the path is invalid, Vrf can also analyze CFlog to detect
 deviations and determine the cause.
 
 #### History and Techniques used
+
 - History
 - CFLAT with technical details + limitations
 - OAT with improvements + limitations
+- 
 [
 CFLAT and OAT had logging events for each Conditional Branch, Indirect function call, and Function exit.
 Additionally, CLFAT also had events for Unconditional Branches and Direct function calls.
@@ -119,7 +122,7 @@ All of these events has a domain transition to TEE for logging.
 
 ## ARM Specifics
 Now that we know [what CFI and CFA are]{highlight="pink"}, we can take a look at platform specific solutions.
-For this work, we choose ARM as it's common in embedded applications[](), 
+For this work, we choose ARM as it's common in embedded applications[?? CITEME], 
 [which is a popular use-case where CFI and CFA techniques are often applied]{highlight="pink"}.[??]()
 
 Before diving into the implementation details, we'll first discuss the ARM ABI 
@@ -127,6 +130,7 @@ Before diving into the implementation details, we'll first discuss the ARM ABI
 We'll also discuss some architecture level features that can be used for CFI and CFA.
 
 ### ARM Assembly Basics
+
 - Registers
 - Calling Conventions
 - Branching
@@ -141,8 +145,9 @@ We'll also discuss some architecture level features that can be used for CFI and
 ### ARM TrustZone
 [TEE arch image Arm docs 3.1's figure]{highlight="pink"}
 
-ARM TrustZone[??]() is Arm's security architecture in Arm A-profile architecture.
+ARM TrustZone[?? ARMTZ] is Arm's security architecture in Arm A-profile architecture.
 It provides 2 execution environments with hardware enforced isolation between them:
+
 1. Normal World or Rich Execution Environment (REE) - It runs the regular software 
 stack with a complex OS, hypervisor, etc. The attack surface is considered to be large, 
 and the execution isn't trusted.
@@ -155,12 +160,14 @@ to Rich and Trusted worlds respectively.
 Exception levels are the levels of software execution privileges. 
 These mappings are specified in [TEE arch image](). 
 The states are often written with their exception levels like:
+
 - `NS.EL2`: Non-secure state, Exception level 2
 - `S.EL2`: Secure state, Exception level 2
 
 *Note that EL3 is always in Secure State.*
 
 [`smc` call convention ...ARMTZ docs 5.1's figure]{highlight="pink"}
+
 This isolation is bridged by the usage of Secure Monitor Call (SMC) instruction.
 The `smc` instruction not available in EL0 in either of the Security States.
 The processes in Rich OS would call the user-space library (TEE Client),
@@ -170,8 +177,9 @@ The Secure Monitor determines the matching handler in TEE and dispatches it acco
 
 ### OP-TEE
 [optee arch figure....arm docs 5.1.3's fig]{highlight="pink"}
+
 One example of a Trusted Kernel is OP-TEE. It was developed by ST-Ericsson, 
-and is now an open source project maintained by Linaro.[??]().
+and is now an open source project maintained by Linaro.[?? OPTEE].
 The rich applications call OP-TEE Driver through TEE Client API. The Driver 
 is then responsible for the communication with the OP-TEE kernel.
 
@@ -180,16 +188,16 @@ is then responsible for the communication with the OP-TEE kernel.
 ### BLAST
 As mentioned in [CFA/History/CLFAT-OAT]{highlight="pink"}, attestation has rarely targeted whole programs.[??]()
 And their approaches did not scale when applied to whole program paths, mainly 
-due to the sheer number of domain transitions between REE/TEE.[?? BLAST]()
-BLAST[??]() was developed in 2023 with whole program paths in mind.
+due to the sheer number of domain transitions between REE/TEE.[?? BLAST]
+BLAST was developed in 2023 with whole program paths in mind.
 They took inspiration from program profiling literature to decrease the said overheads.
 
 #### How it works
 [It is a LLVM pass...]{highlight="pink"}
 
-BLAST reserves 2 registers - called `BLReg` and `LogReg` - for the required instrumentation.
+BLAST reserves 2 registers called `BLReg` and `LogReg` for the required instrumentation.
 
-*Local Logging:*  
+##### Local Logging:
 If we need fine-grained logging, but cannot afford the domain switches, why not log inside the REE?
 BLAST does this by pre-allocating a log inside the process's address space,
 and adds SFI measures [discussed in SFI]{highlight="pink"} to protect its integrity.
@@ -202,12 +210,13 @@ and increments its value.
 
 When a half is filled, `LogReg` reaches a sentinel page and a hardware fault is generated on write.
 The fault handler is then executed in the TEE, which:
+
 1. Makes the `LogReg` point to the other half.
 2. Adds write-protection to the filled half, to ensure it isn't overwritten.
 3. Commits the log's state to the TEE.
 4. After the log is committed, it makes the half writable again.
 
-*Software Fault Isolation (SFI)*
+##### Software Fault Isolation (SFI):
 Sentinel pages are write-protected, but what about the regular log? 
 Although `LogReg` is reserved, and cannot be used by other parts of the code,
 simple store instructions can still modify the log value. Only the instrumentation 
@@ -221,26 +230,65 @@ To ensure this, BLAST adds instrumentation after each store instruction to:
 [sfi instrumentation figure]{highlight="pink"}
 
 The log size is statically defined, and it is also aligned to that size. 
-i.e. a 1MB log would be aligned to 1MB address. This makes the check equivalent to a mask and subtract.
+i.e. a 1MB log would be aligned to 1MB address. This makes the check equivalent 
+to a mask and subtract.
 
 The reason for adding the check *after* the store is to further ensure that a 
 CFI attack would not be able to bypass the check by jumping to the store.
 The check would necessarily be run after the store, and therefore aborting the 
 execution if the log had been modified.
 
-- Optimizing log entries using BL
+##### Optimizing log entries:
+BLAST takes inspiration from profiling literature to place instrumentation in 
+an optimal fashion. It uses Ball-Larus algorithm [?? Ball-Larus] to selectively 
+add instrumentation to the edges of a CFG. The instrumentation manipulates the value of a counter, 
+which at the end of the CFG would be between `0` and `N-1`. Where `N` is the number 
+of acyclic paths in the CFG. This counter can be used to uniquely identify the 
+runtime path that was taken by the function.
+
+This results in `2x` compact representation of paths compared to OAT's bit tracing, 
+and it places instrumentation at fewer locations.[?? BLAST]
+
+##### WPP
+BLAST then takes the large log, and compactly represents it using a context-free 
+grammar called WPP. It is an extension of Ball-Larus numbering, to build a single 
+control flow path through the complete program.[?? BLAST, ?? WPP]
+This takes the log, that can grow upto MBs or even GBs in size, and converts into 
+a WPP representation that's just a few hundred bytes big.
 
 #### Outcome
 
 #### Limitations
+The thread responsible of committing the log to TEE would have to run in parallel 
+to the program. Single core settings had an average runtime overhead of 175% 
+as compared to 67% of multi-core execution.[?? BLAST]
+
+Reserving 2 registers may cause compatibility issues, especially with programs 
+that rely on inline assembly. But as shown by CFA+[?? CFA+], 
+[it is not an issue??]{highlight="pink"}
 
 ### CFA+
 
 #### How it works
+[
 - Custom PAC
 - BTI
 - Logging?
+]{highlight="pink"}
 
 #### Outcome
 
 #### Limitations
+[
+One of the main limitations of CFA+ is that they do not mention what's their 
+(logging policy)?? for attestation. They do not elaborate on whether they have 
+fine-grained or course-grained CFA, or even what is their logging mechanism.
+The benchmarks report performance that is too good for the number of domain 
+switches they'd need for committing the logs in TEE.
+]{highlight="pink"}
+Also, the attestation architecture diagram given indicates that the attestation 
+agent is triggered on BTI violation, but the [text..where??]{highlight="pink"} 
+mentions logs to have a violation field. The field indicates weather an entry was due to violation.
+This contradiction is not addressed in their paper.[verify this statement]{highlight="pink"}
+
+[rolling their own CFI which has XOR loophole (verify!)]{highlight="pink"}
