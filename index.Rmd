@@ -48,7 +48,7 @@ title: |
 author: Pratyush Choudhary
 college: Indian Institute of Gandhinagar
 #university: Indian Institute of Gandhinagar
-university-logo: templates/beltcrest.pdf
+university-logo: templates/iitgnlogo.png
 university-logo-width: 5cm
 submitted-text: A thesis submitted for the degree of
 degree: Master of Technology
@@ -96,7 +96,7 @@ params:
   referenceHeading: "References"
 
 # citation and reference options (pandoc) #
-csl: bibliography/apa.csl # try csl: bibliography/transactions-on-computer-human-interaction.csl for numerical citations
+csl: bibliography/transactions-on-computer-human-interaction.csl # try csl: bibliography/apa.csl for named citations
 refs-line-spacing: 6mm
 refs-space-between-entries: 1mm
 
@@ -145,7 +145,7 @@ running-header-position-rightmark: RE  #marks the section.
 
 
 ### draft mark ###
-draft-mark: false # add a DRAFT mark?
+draft-mark: true # add a DRAFT mark?
 draft-mark-foot-or-head: foot ##'foot' = in footer, 'head' = in header
 draft-mark-position: C
 draft-mark-text: DRAFT on \today
