@@ -41,10 +41,7 @@ output:
 #####################
 ## thesis metadata ##
 #####################
-title: |
-  `oxforddown`: \
-  An Oxford University Thesis \
-  Template for R Markdown
+title: Extending Whole Program CFA for Integrity
 author: Pratyush Choudhary
 college: Indian Institute of Gandhinagar
 #university: Indian Institute of Gandhinagar
@@ -212,4 +209,9 @@ If you need to create your own additional chunk options, edit the file scripts/c
 
 <!-- This chunk includes the front page content in HTML output -->
 ```{r ebook-welcome, child = 'front-and-back-matter/_welcome-ebook.Rmd', eval=knitr::is_html_output()}
+```
+
+```{r setup, include=FALSE}
+# don't show code unless we explicitly set echo = TRUE
+knitr::opts_chunk$set(echo = FALSE)
 ```
