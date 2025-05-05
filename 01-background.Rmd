@@ -31,19 +31,21 @@ There are a few factors that may influence the program to not behave correctly:[
 3. A malicious actor attacks the device/program to modify the execution.
 4. The device's environment is adversarial. Eg. A nuclear plant's control panel.
 
-[define control flow]{highlight="pink"}
+[define control flow here...]{highlight="pink"}
 
-For factors 1-2, there are techniques like testing, fuzzing, [formal verification ...]{highlight="pink"}
-that try to minimize the software/hardware bugs. [extend this ...]{highlight="pink"}
+For factors 1-2, there are techniques like source code auditing, testing, 
+fuzzing, static and dynamic program analysis, and formal verification that try to minimize the software/hardware bugs. 
+[@artoftesting; @millerfuzzing; @luk2005dynamic; @godefroid2012sage; @quinlan2009source; @kern1999formal]
 
-For factor 3, there are various types of attacks that are possible ranging from 
+For factor 3, there are various types of results that are possible ranging from 
 Denial of Service to Information Leak.
-Our focus is on preventing the control flow of the program to not change,
-and for that, the techniques come under the term Control Flow Integrity (CFI).[?? sok]
+Our focus is on preventing the control flow of the program from changing,
+and for that, the techniques come under the term Control Flow Integrity (CFI).[@sok]
 
 But what if the adversary is the device's environment like factor 4? 
 Or what do we do about the fact that we still cannot guarantee that the program is secure?
-[As stated by Anon: security is an arms race, no system is fully secure.]{highlight="pink"}[??]()
+As stated by Bruce Schneier: Security is a process, not a product.[@bruceessay]
+No system is fully secure, and security flaws are inevitable.
 We need to at-least be able to prove in some way that the program behaved as intended.
 
 For simple programs that process an input to give a deterministic output like 
@@ -63,24 +65,30 @@ capabilities [afforded to us by them.]{highlight="pink"}
 ### CFI
 
 #### What/Why?
+[Edit/Add to this part]{highlight="pink"}
 
 #### History and Techniques used
+[Edit/Add to this part]{highlight="pink"}
 
 ##### Various (3/4) types of attacks possible and their mitigations
+
 - Code injection
 - Code Reuse (ROP/JOP)
 - Data Manipulation
 - Side channels
 - ...
 
-[PAC + BTI discussed in Arm Specifics Section]{highlight="pink"}
+[Mention PAC + BTI discussed in Arm Specifics Section]{highlight="pink"}
 
 ### CFA
 
 #### Why?
+[Edit/Add to this part]{highlight="pink"}
 
 #### General Overview of the process
-[figure - CFA overview]{highlight="pink"}
+```{r cfa-workflow, fig.cap="Typical CFA Interaction", out.width='50%', fig.align='center', fig.pos='H'}
+knitr::include_graphics("./imgs/placeholder-cfa-workflow.png")
+```
 
 For CFA, the general workflow has 2 separate agents, a prover (Prv) and a remote verifier (Vrf). 
 The Vrf sends a request to Prv with a cryptographic challenge (Eg. a *nonce*).
@@ -105,47 +113,53 @@ It does so by checking if CFlog contains a valid control flow of the program
 for the input. If the path is invalid, Vrf can also analyze CFlog to detect 
 deviations and determine the cause.
 
-#### History and Techniques used
+#### History and Techniques used{#cfahistory}
+[Edit/Add to this part]{highlight="pink"}
 
 - History
 - CFLAT with technical details + limitations
 - OAT with improvements + limitations
-- 
-[
-CFLAT and OAT had logging events for each Conditional Branch, Indirect function call, and Function exit.
+- CFLAT and OAT had logging events for each Conditional Branch, Indirect function call, and Function exit.
 Additionally, CLFAT also had events for Unconditional Branches and Direct function calls.
 All of these events has a domain transition to TEE for logging.
-]{highlight="pink"}
+- Whole programs not focused.
 - Mention BLAST, just brief explaination. Link to its section.
+- Also mention constant reporting
 - ...
-[Also mention constant reporting]{highlight="pink"}
 
 ## ARM Specifics
 Now that we know [what CFI and CFA are]{highlight="pink"}, we can take a look at platform specific solutions.
 For this work, we choose ARM as it's common in embedded applications[?? CITEME], 
-[which is a popular use-case where CFI and CFA techniques are often applied]{highlight="pink"}.[??]()
+[which is a popular use-case where CFI and CFA techniques are often applied]{highlight="pink"}.[?? CITEME]()
 
 Before diving into the implementation details, we'll first discuss the ARM ABI 
 (ARMv8-A specifically) and its calling conventions to brush up the required background knowledge.
 We'll also discuss some architecture level features that can be used for CFI and CFA.
 
 ### ARM Assembly Basics
+[Edit/Add to this part]{highlight="pink"}
 
 - Registers
 - Calling Conventions
+  - Link
+  - Leaf and lon leaf functions
 - Branching
     1. B, B.Cond
     1. BL
     1. BLR
 
 ### PAC
+[Edit/Add to this part]{highlight="pink"}
 
 ### BTI
+[Edit/Add to this part]{highlight="pink"}
 
 ### ARM TrustZone
-[TEE arch image Arm docs 3.1's figure]{highlight="pink"}
+```{r armtz-arch, fig.cap="ARM TrustZone Architecture", out.width='100%', fig.align='center', fig.pos='H'}
+knitr::include_graphics("./imgs/placeholder-armtz.png")
+```
 
-ARM TrustZone[?? ARMTZ] is Arm's security architecture in Arm A-profile architecture.
+ARM TrustZone[@armtz] is Arm's security architecture in Arm A-profile architecture.
 It provides 2 execution environments with hardware enforced isolation between them:
 
 1. Normal World or Rich Execution Environment (REE) - It runs the regular software 
@@ -158,7 +172,7 @@ It also has a smaller attack surface due to its simplicity and size.
 There are 2 security states Arm architecture - Non-secure and Secure which map 
 to Rich and Trusted worlds respectively. 
 Exception levels are the levels of software execution privileges. 
-These mappings are specified in [TEE arch image](). 
+These mappings are specified in figure \@ref(fig:armtz-arch). 
 The states are often written with their exception levels like:
 
 - `NS.EL2`: Non-secure state, Exception level 2
@@ -166,7 +180,9 @@ The states are often written with their exception levels like:
 
 *Note that EL3 is always in Secure State.*
 
-[`smc` call convention ...ARMTZ docs 5.1's figure]{highlight="pink"}
+```{r smc-convention, fig.cap="smc instruction call convention", out.width='75%', fig.align='center', fig.pos='H'}
+knitr::include_graphics("./imgs/placeholder-smc-workflow.png")
+```
 
 This isolation is bridged by the usage of Secure Monitor Call (SMC) instruction.
 The `smc` instruction not available in EL0 in either of the Security States.
@@ -174,22 +190,25 @@ The processes in Rich OS would call the user-space library (TEE Client),
 which would in turn perform a low level call to the TrustZone driver in Rich OS.
 The driver would then perform a `smc` call with arguments to the Secure Monitor.
 The Secure Monitor determines the matching handler in TEE and dispatches it accordingly.
+This process is shown in figure \@ref(fig:smc-convention).
 
 ### OP-TEE
-[optee arch figure....arm docs 5.1.3's fig]{highlight="pink"}
 
 One example of a Trusted Kernel is OP-TEE. It was developed by ST-Ericsson, 
-and is now an open source project maintained by Linaro.[?? OPTEE].
+and is now an open source project maintained by Linaro.[@optee].
 The rich applications call OP-TEE Driver through TEE Client API. The Driver 
 is then responsible for the communication with the OP-TEE kernel.
+```{r optee-arch, fig.cap="OP-TEE Architecture", out.width='75%', fig.align='center', fig.pos='H'}
+knitr::include_graphics("./imgs/placeholder-optee.png")
+```
 
 ## Primary Works
 
 ### BLAST
-As mentioned in [CFA/History/CLFAT-OAT]{highlight="pink"}, attestation has rarely targeted whole programs.[??]()
+As mentioned in [CFA history](#cfahistory), attestation has rarely targeted whole programs.
 And their approaches did not scale when applied to whole program paths, mainly 
-due to the sheer number of domain transitions between REE/TEE.[?? BLAST]
-BLAST was developed in 2023 with whole program paths in mind.
+due to the sheer number of domain transitions between REE/TEE.[@blast]
+BLAST[@blast] was developed in 2023 with whole program paths in mind.
 They took inspiration from program profiling literature to decrease the said overheads.
 
 #### How it works
@@ -200,13 +219,15 @@ BLAST reserves 2 registers called `BLReg` and `LogReg` for the required instrume
 ##### Local Logging:
 If we need fine-grained logging, but cannot afford the domain switches, why not log inside the REE?
 BLAST does this by pre-allocating a log inside the process's address space,
-and adds SFI measures [discussed in SFI]{highlight="pink"} to protect its integrity.
+and adds SFI measures discussed in [SFI](#blastsfi) to protect its integrity.
 The log is shared between REE and TEE, and its permissions are managed by the TEE.
 It is then divided in 2 halves, with each half ending with a write-protected page called `sentinel page`.
 `LogReg` is a pointer to the head of the log, and BLAST simply adds the log entry 
 and increments its value.
 
-[log figure]{highlight="pink"}
+```{r blast-log-pages, fig.cap="Structure of the log in BLAST", out.width='60%', fig.align='center', fig.pos='H'}
+knitr::include_graphics("./imgs/placeholder-blast-pages.png")
+```
 
 When a half is filled, `LogReg` reaches a sentinel page and a hardware fault is generated on write.
 The fault handler is then executed in the TEE, which:
@@ -216,7 +237,7 @@ The fault handler is then executed in the TEE, which:
 3. Commits the log's state to the TEE.
 4. After the log is committed, it makes the half writable again.
 
-##### Software Fault Isolation (SFI):
+##### Software Fault Isolation (SFI):{#blastsfi}
 Sentinel pages are write-protected, but what about the regular log? 
 Although `LogReg` is reserved, and cannot be used by other parts of the code,
 simple store instructions can still modify the log value. Only the instrumentation 
@@ -227,7 +248,14 @@ To ensure this, BLAST adds instrumentation after each store instruction to:
 1. Fetch the store address and the log's address.
 2. Check that the store address doesn't lie inside the log.
 
-[sfi instrumentation figure]{highlight="pink"}
+```asm
+str w8, [x29, #4]                 // perform the store
+add x9, x29, #4                   // obtain the store address
+and x9, x9, #0x7ffffffffff00000   // mask the store address
+ldr x10, log_start_addr           // 1MB-aligned log start
+subs x9, x9, x10                  // if equal, then abort.
+b.e _abort
+```
 
 The log size is statically defined, and it is also aligned to that size. 
 i.e. a 1MB log would be aligned to 1MB address. This makes the check equivalent 
@@ -240,43 +268,45 @@ execution if the log had been modified.
 
 ##### Optimizing log entries:
 BLAST takes inspiration from profiling literature to place instrumentation in 
-an optimal fashion. It uses Ball-Larus algorithm [?? Ball-Larus] to selectively 
+an optimal fashion. It uses Ball-Larus algorithm [@balllarus] to selectively 
 add instrumentation to the edges of a CFG. The instrumentation manipulates the value of a counter, 
 which at the end of the CFG would be between `0` and `N-1`. Where `N` is the number 
 of acyclic paths in the CFG. This counter can be used to uniquely identify the 
 runtime path that was taken by the function.
 
 This results in `2x` compact representation of paths compared to OAT's bit tracing, 
-and it places instrumentation at fewer locations.[?? BLAST]
+and it places instrumentation at fewer locations.[@blast]
 
-##### WPP
+##### WPP:
 BLAST then takes the large log, and compactly represents it using a context-free 
 grammar called WPP. It is an extension of Ball-Larus numbering, to build a single 
-control flow path through the complete program.[?? BLAST, ?? WPP]
+control flow path through the complete program.[@blast; @laruswpp]
 This takes the log, that can grow upto MBs or even GBs in size, and converts into 
 a WPP representation that's just a few hundred bytes big.
 
 #### Outcome
+[Edit/Add to this part]{highlight="pink"}
 
 #### Limitations
 The thread responsible of committing the log to TEE would have to run in parallel 
 to the program. Single core settings had an average runtime overhead of 175% 
-as compared to 67% of multi-core execution.[?? BLAST]
+as compared to 67% of multi-core execution.[@blast]
 
 Reserving 2 registers may cause compatibility issues, especially with programs 
-that rely on inline assembly. But as shown by CFA+[?? CFA+], 
+that rely on inline assembly. But as shown by CFA+[@cfaplus], 
 [it is not an issue??]{highlight="pink"}
 
 ### CFA+
 
 #### How it works
-[
+[Edit/Add to this part]{highlight="pink"}
+
 - Custom PAC
 - BTI
 - Logging?
-]{highlight="pink"}
 
 #### Outcome
+[Edit/Add to this part]{highlight="pink"}
 
 #### Limitations
 [

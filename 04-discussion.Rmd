@@ -13,6 +13,30 @@ documentclass: book
 \minitoc <!-- this will include a mini table of contents-->
 
 ## Limitations
+[Edit/Add to this part]{highlight="pink"}
+
+Although not a limitation in this work, our aim was to add checks in the TEE 
+that would monitor the program execution and if integrity has been violated, 
+abort the execution. We can pursue this further by modifying CFLAT/OAT monitor.
+
+The benchmarks do not include whole program path generation part. 
+
+The logging on violation part, although mentioned has not been implemented yet 
+in the prototype. This can also be implementation dependent and users may choose 
+to abort execution instead of logging.
+
+Some of the assumptions like write XOR execute are not foolproof and there are 
+proof of concepts exploiting them. We need to decrease the TCB and the 
+assumptions to increase the security guarantees given by this work.
+
+Could not add other CFI measures than PAC and BTI. 
+
+PAC is only enabled if the whole dependency chain also has it enabled so we 
+cannot use PAC with pre-compiled binaries that do not have it enabled.
+
+The benchmarking was done on a simulated Raspberry pi inside qemu instead of a 
+hardware board. Thus we have only taken the ratio of baseline code and the 
+instrumented code. The timings may differ a bit on a physical board.
 
 ## Why is it better than CFA+
 

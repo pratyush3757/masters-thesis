@@ -16,12 +16,38 @@ documentclass: book
 \minitoc <!-- this will include a mini table of contents-->
 
 ## Why?
-- [note on pg 2690 blast]{highlight="pink"}
+
+CFA mechanisms rely on the fact that a malicious actor would not want their attack 
+to be detected. And for this there attack must not leave any trace in the log that 
+would be visible to the verifier. But what if the attacker does not care about if 
+their attack is visible or not, if the damage is done? Code reuse attacks become 
+very easy in this case, as most CFA techniques aim to detect them, but not prevent them.
+
+Taking the example of the syringe pump, if an attacker has used ROP gadgets to 
+change the control flow of the pump to inject 10 ml instead of 1 ml, it doesn't 
+matter if we can detect if afterwards as the person's safety has already been compromised.
+
+Our goal in this case is to prevent these kinds of scenarios.
+
+People have been working on CFI and CFA parallelly as two solutions to similar 
+problems, but they have not thought about applying both of these together. 
+When applied together, these techniques sometimes complement each other and cover 
+each other's disadvantages. For example, adding integrity to some parts of the 
+code would remove the need for logging those parts, decreasing the attestation 
+overhead, which is a common problem in the CFA literature. 
+
+[Also write about the constant monitor for input idea]{highlight="pink"} 
+
+Before going forward, we should list out some of our assumptions:
+
+- Write XOR Execute is enabled on pages.
+- Hardware is implicitly trusted.
+- Communication between Vrf and Prv is secure.
+- OS is not trusted if and only if [page management?]{highlight="pink"} is handled
+by the secure monitor.
 
 ## What can be done to add Integrity guarantees?
 
 ## PAC + BTI gives us room to optimize BLAST
 
 ## Log Levels for control over Report Granularity
-
-## OP-TEE(delete from here?)
