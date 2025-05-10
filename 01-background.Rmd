@@ -132,24 +132,251 @@ Now that we know [what CFI and CFA are]{highlight="pink"}, we can take a look at
 For this work, we choose ARM as it's common in embedded applications[?? CITEME], 
 [which is a popular use-case where CFI and CFA techniques are often applied]{highlight="pink"}.[?? CITEME]()
 
-Before diving into the implementation details, we'll first discuss the ARM ABI 
+Before diving into the implementation details, we'll first discuss the ARM Architecture
 (ARMv8-A specifically) and its calling conventions to brush up the required background knowledge.
 We'll also discuss some architecture level features that can be used for CFI and CFA.
 
 ### ARM Assembly Basics
+We will only focus on AArch64, the 64-bit instruction set, and on the ARMv8-A profile[@arm-arch-manual].
+
+#### Registers
+Let us first talk about Registers.
+SIMD, floating point and vector registers will be excluded in this section for brevity.
+
+In AArch64, the available registers are:[@arm-isa; @armasm-user-guide]
+
+- 31 64-bit general-purpose registers `x0 - x30` which can hold any type of data.
+They usually hold integers and addresses, but anything with length of 64-bits 
+can be stored in them. Their lower 32-bits can also be accessed and used as 
+32-bit registers by using `wN` instead of `xN`, where `N` is the register number.
+- 1 Program Counter `PC`.
+- 1 Process State `PSTATE`.
+- `wzr/xzr` called zero register,
+which reads `0` and ignores the writes. Therefore it's only useful as a source.
+It doesn't represent a real register on chip,
+but it's just a symbol for "assume value of operand to be zero". 
+- 4 stack pointer registers `SP_EL0 - SP_EL3`.
+- 3 exception link registers `ELR_EL1 - ELR_EL3`.
+- 3 saved program status registers `SPSR_EL1 - SPSR_EL3`. They are 32-bit wide only, 
+unlike other registers.
+
+There is no register `w31/x31`. Depending on instructions, the register number `31` 
+either represents the zero register or the stack pointer.
+
+Depending on the Exception Level or privileged execution mode, 
+the Stack Pointer `SP` is represented by the corresponding `SP_EL` register.
+
+As we are talking about user level code (`EL0`) only, we will ignore the `ELR` and `SPSR` 
+registers, and consider `SP_EL` registers to just be `SP`.
+
+The registers and their usage are as follows:[@arm-isa; @arm-pcs; @armasm-user-guide]
+
+- `x0` to `x7`:  
+(Volatile) For passing arguments and return values for system and function calls. 
+Additional arguments are stored on the stack. 
+The return value is typically stored in `x0`. Caller assumes they will be modified.
+- `x8`:  
+(Volatile) Indirect result location register. It is also typically used for holding 
+syscall number.
+- `x9` to `x15`:  
+(Volatile) General purpose, for storing temporary data. Caller saved.
+- `x16` and `x17`:  
+(Volatile) Intra-procedure-call registers. Used as scratch 
+registers by system linker during calls.
+- `x18`:  
+Reserved for platform specific use. Usage is avoided for portability.
+- `x19` to `x28`:  
+(Non-volatile) Callee-saved registers. They must be preserved across calls.
+If used, the callee must push the values to the stack at the beginning of function,
+and restore them before returning.
+- `x29` (Frame Pointer `FP`):  
+(Non-volatile) Points to the start of the stack frame of a function.
+- `x30` (Link Register `LR`):  
+(Non-volatile) Holds the return address of a function call.
+Can be used, but value must be restored before returning.
+- `SP` (Stack Pointer):  
+Special Register. Points to the top of the stack. 
+Can be used as base address register for loads and stores.
+- `PC` (Program Counter):  
+Special Register. Cannot be accessed explicitly.
+Holds the address of the next instruction to be executed.
+- `PSTATE`:  
+Holds the various status and control flags for the processor. 
+They include Execution State, Interrupt Mask Bits, Processor Mode, Condition Flags, 
+
+*Sidenote:* XNU (Apple iOS and MacOS) ABI's conventions differ from the aforementioned one.
+Although private and undocumented, it can be seen from the source [@apple-oss] that
+the main differences (as of 02 May 2025) are:[@so-xnu-abi]
+
+- The immidiate value passed to `svc` instruction is ignored. `svc 0x80` is used 
+by the std library, which invokes a single handler.
+- The register used for syscalls is `x16` instead of `x8`.
+- The arguments are in `x0` through `x8` registers, supporting upto 9 arguments. 
+This is only used if there's an indirect syscall i.e. `x16 = 0`.
+- Stack is not used for passing arguments.
+- `x0` and `x1` can hold 2 return values. For example in case of `fork`.
+- Error is reported using the carry bit, in which case `x0` would hold 
+the error code.
+- Syscall numbers can be *negative*. 
+UNIX ones are non-negative as usual, ranging between `0` and `557`. 
+Mach ones are negative with range between `-10` and `-100`.
+
+
+#### Calling (and Branching) Conventions
+Now that we know the details about the registers, their usage and their volatility for a caller,
+we can look at how functions are called in ARM architecture.
+
+The main difference here from `x86-64` ISA is that we don't have a `call` instruction.
+Instead branching instructions are used for conditionals, loops, and procedure calls.
+We mainly have 5 types of Branching instructions:
+
+- `B label` (Branch):  
+Unconditional branch to a label within `PC` $\pm$ `128MiB`.
+Not a subroutine call or return.
+- `B.cond label` (Branch Conditionally):  
+Conditional branch to label within `PC` $\pm$ `1MiB`.
+Not a subroutine call or return.
+- `BL label` (Branch with Link):  
+Unconditional branch to label in range $\pm$ `128MiB`, 
+and store the return address (`PC+4`) in `x30`.
+It is a subroutine call.
+- `BR xN`(Branch to Register):  
+Unconditional branch to address in register `xN`.
+It is not a subroutine return.
+- `BLR xN` (Branch with Link to Register):  
+Unconditional branch to address in register `xN`, 
+and store return address (`PC+4`) in `x30`.
+It is a subroutine call.
+
+There are many other branching instructions too, like `CBZ`, `TBZ` etc. 
+but they are not relevant for us.
+
+Now, we get 2 types of functions:
+
+- *Non-leaf* - Functions that call other functions.
+- *Leaf* - Functions that don't have any function calls in their body, and simply return.
+
+*Why is it relevant?*
+Because subroutine calls would use `BL`/`BLR` instructions,
+and store the return address in `x30`.[@arm-arch-manual]
+We don't need to worry about Leaf functions, 
+but what about nested Non-leaf function calls? `x30` would get overwritten.  
+To prevent that from happening, we make the distinction, and treat them differently.
+For Non-leaf functions, we simply save the value in `x30` at the start of the function, 
+and restore it before return. It looks like this:
+
+```asm
+foo:
+  // save x30
+  ...
+  bl bar  // call bar
+  ...
+  // restore x30
+  ret
+
+bar:
+  // save x30
+  ...
+  bl baz  // call baz
+  ...
+  // restore x30
+  ret
+
+baz:
+  ...
+  ret
+```
+
+> `foo` and `bar` are non-leaf functions, whereas `baz` is a leaf function.
+
+### Pointer Authentication Code (PAC)
+To understand PAC, we must first understand why and what does it aim to fix.
+
+#### Return Oriented Programming (ROP)
+
+We have [discussed about stack smashing]{highlight="pink"}, and how arbitrary code execution can be prevented.
+This means that attackers can't inject and use arbitray code, but what is stopping 
+them from using existing application code? Many applications are huge in size,
+and that means there is a lot of code that has execute permissions already.
+The attackers can analyze the application, and find out gadgets. Gadgets are executable 
+fragments of code, usually ending with a return. For example:
+```asm
+...
+add x0, x1, x2
+ret
+```
+The attackers can then chain these gadgets together to form and execute their malicious code.
+Any library that is in the address space of the process is a potential source of gadgets.
+For example, GLIBC on ARM64, has almost 16,000 usable gadgets.[@riscyrop]
+This process is described in figure \@ref(fig:rop-diag).
+
+```{r rop-diag, fig.cap="Using ROP Gadgets", out.width='100%', fig.align='center'}
+knitr::include_graphics("./imgs/placeholder-rop.png")
+```
+
+Although the process of finding and chaining the process is hard, it can be automated. 
+ASLR can make the process harder, but it is still possible to carry out ROP attacks using
+Automated Exploit Generation (AEG) tools or information disclosure.[@aeg2014; @riscyrop]
+
+#### Solution?
+
+ROP exploits the fact that the return address is not checked, and can be used to 
+jump to next gadget instead. What if we check the return address for corruption 
+before using it? One way is using stack canaries, but even those can be bypassed 
+by memory disclosure vulnerabilities.
+
+What if we sign the `LR`? The attacker would need a correctly signed address to replace it, 
+increasing the difficulty of exploit generation.
+That's exactly what PAC does. Pointer Authentication
+takes advantage of the fact that pointers are 64-bit long, but not all 64-bits 
+are needed to represent the virtual memory address. 
+
+```{r pac-bits, fig.cap="Pointer Layout on ARM64", out.width='100%', fig.align='center'}
+knitr::include_graphics("./imgs/placeholder-pac-bits.png")
+```
+PAC uses the top bits of the pointer to store a signature of the pointer 
+(as shown in fig \@ref(fig:pac-bits)), and they aren't
+used as a part of the address. At the start of the function, the `LR` is signed.
+Then just before the return, the address is authenticated using PAC. If the check fails,
+an exception is raised. Now, to perform a ROP attack, the attacker needs gadget addresses 
+(made harder with ASLR), and have properly signed pointers to those addresses.
+To get a signed pointer, they would need to access a signing gadget.
+
+#### Forming a PAC
+
+ARM provides 5 128-bit keys. Each of them is stored in a pair of 64-bit system registers:
+
+- 2 keys, A and B, for instruction pointers
+- 2 keys, A and B, for data pointers
+- 1 key for general use
+
+And these registers are only accessible in EL1 and above (refer \@ref(fig:armtz-arch)).
+The signature is formed by using the key, address and a modifier as shown in figure \@ref(fig:pac-diag). 
+```{r pac-diag, fig.cap="PAC formation", out.width='100%', fig.align='center'}
+knitr::include_graphics("./imgs/placeholder-pac-diag.png")
+```
+
+The strength of PAC depends on the size of the configured virtual address. 
+The keys have limited life spans, that is, each time the application is launched, the keys can be rotated.
+And each application can have its own independent set of keys. 
+The modifier should be the same for sign-authenticate instruction pair on entry/exit.
+So it specifies the context in which the pointer is valid in. For example, 
+using `SP` as the modifier would give us a PAC that's valid only for that call of the function, 
+as `SP` may be different on future calls.
+
+The attacker would need to get every pointer correct in the chain, otherwise an 
+exception would be raised.
+
+*Sidenote:*
+In ARMv9.5-A, `PACIxSPPC` and `AUTIxSPPC` instructions were added to use `SP + PC` 
+as the modifier to sign `LR`.
+It gives better security by tying the caller and callee to the address, 
+and uniquely associating PAC with that particular instance of function usage. 
+
+#### Using NOP space
 [Edit/Add to this part]{highlight="pink"}
 
-- Registers
-- Calling Conventions
-  - Link
-  - Leaf and lon leaf functions
-- Branching
-    1. B, B.Cond
-    1. BL
-    1. BLR
-
-### PAC
-[Edit/Add to this part]{highlight="pink"}
+[Add example asm]{highlight="pink"}
 
 ### BTI
 [Edit/Add to this part]{highlight="pink"}
@@ -159,7 +386,7 @@ We'll also discuss some architecture level features that can be used for CFI and
 knitr::include_graphics("./imgs/placeholder-armtz.png")
 ```
 
-ARM TrustZone[@armtz] is Arm's security architecture in Arm A-profile architecture.
+ARM TrustZone[@armtz] is Arm's security architecture in ARM A-profile architecture.
 It provides 2 execution environments with hardware enforced isolation between them:
 
 1. Normal World or Rich Execution Environment (REE) - It runs the regular software 
@@ -169,7 +396,7 @@ and the execution isn't trusted.
 stack which is assumed to be trusted. It has its own trusted services and OS.
 It also has a smaller attack surface due to its simplicity and size. 
 
-There are 2 security states Arm architecture - Non-secure and Secure which map 
+There are 2 security states ARM architecture - Non-secure and Secure which map 
 to Rich and Trusted worlds respectively. 
 Exception levels are the levels of software execution privileges. 
 These mappings are specified in figure \@ref(fig:armtz-arch). 

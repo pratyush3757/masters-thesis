@@ -481,7 +481,7 @@ There are a few factors that may influence the program to not behave correctly:{
 
 For factors 1-2, there are techniques like source code auditing, testing,
 fuzzing, static and dynamic program analysis, and formal verification that try to minimize the software/hardware bugs.
-{[}\citeproc{ref-godefroid2012sage}{5}, \citeproc{ref-kern1999formal}{6}, \citeproc{ref-luk2005dynamic}{9}--\citeproc{ref-quinlan2009source}{12}{]}
+{[}\citeproc{ref-godefroid2012sage}{11}, \citeproc{ref-kern1999formal}{13}, \citeproc{ref-luk2005dynamic}{16}--\citeproc{ref-quinlan2009source}{19}{]}
 
 For factor 3, there are various types of results that are possible ranging from
 Denial of Service to Information Leak.
@@ -490,7 +490,7 @@ and for that, the techniques come under the term Control Flow Integrity (CFI).{[
 
 But what if the adversary is the device's environment like factor 4?
 Or what do we do about the fact that we still cannot guarantee that the program is secure?
-As stated by Bruce Schneier: Security is a process, not a product.{[}\citeproc{ref-bruceessay}{13}{]}
+As stated by Bruce Schneier: Security is a process, not a product.{[}\citeproc{ref-bruceessay}{20}{]}
 No system is fully secure, and security flaws are inevitable.
 We need to at-least be able to prove in some way that the program behaved as intended.
 
@@ -609,46 +609,333 @@ Now that we know \sethlcolor{pink}\hl{what CFI and CFA are}\sethlcolor{correctio
 For this work, we choose ARM as it's common in embedded applications{[}?? CITEME{]},
 \sethlcolor{pink}\hl{which is a popular use-case where CFI and CFA techniques are often applied}\sethlcolor{correctioncolor}.\href{}{?? CITEME}
 
-Before diving into the implementation details, we'll first discuss the ARM ABI
+Before diving into the implementation details, we'll first discuss the ARM Architecture
 (ARMv8-A specifically) and its calling conventions to brush up the required background knowledge.
 We'll also discuss some architecture level features that can be used for CFI and CFA.
 
 \subsection{ARM Assembly Basics}\label{arm-assembly-basics}
 
-\sethlcolor{pink}\hl{Edit/Add to this part}\sethlcolor{correctioncolor}
+We will only focus on AArch64, the 64-bit instruction set, and on the ARMv8-A profile{[}\citeproc{ref-arm-arch-manual}{6}{]}.
+
+\subsubsection{Registers}\label{registers}
+
+Let us first talk about Registers.
+SIMD, floating point and vector registers will be excluded in this section for brevity.
+
+In AArch64, the available registers are:{[}\citeproc{ref-armasm-user-guide}{4}, \citeproc{ref-arm-isa}{5}{]}
 
 \begin{itemize}
 \tightlist
 \item
-  Registers
+  31 64-bit general-purpose registers \texttt{x0\ -\ x30} which can hold any type of data.
+  They usually hold integers and addresses, but anything with length of 64-bits
+  can be stored in them. Their lower 32-bits can also be accessed and used as
+  32-bit registers by using \texttt{wN} instead of \texttt{xN}, where \texttt{N} is the register number.
 \item
-  Calling Conventions
-
-  \begin{itemize}
-  \tightlist
-  \item
-    Link
-  \item
-    Leaf and lon leaf functions
-  \end{itemize}
+  1 Program Counter \texttt{PC}.
 \item
-  Branching
-
-  \begin{enumerate}
-  \def\labelenumi{\arabic{enumi}.}
-  \tightlist
-  \item
-    B, B.Cond
-  \item
-    BL
-  \item
-    BLR
-  \end{enumerate}
+  1 Process State \texttt{PSTATE}.
+\item
+  \texttt{wzr/xzr} called zero register,
+  which reads \texttt{0} and ignores the writes. Therefore it's only useful as a source.
+  It doesn't represent a real register on chip,
+  but it's just a symbol for ``assume value of operand to be zero''.
+\item
+  4 stack pointer registers \texttt{SP\_EL0\ -\ SP\_EL3}.
+\item
+  3 exception link registers \texttt{ELR\_EL1\ -\ ELR\_EL3}.
+\item
+  3 saved program status registers \texttt{SPSR\_EL1\ -\ SPSR\_EL3}. They are 32-bit wide only,
+  unlike other registers.
 \end{itemize}
 
-\subsection{PAC}\label{pac}
+There is no register \texttt{w31/x31}. Depending on instructions, the register number \texttt{31}
+either represents the zero register or the stack pointer.
+
+Depending on the Exception Level or privileged execution mode,
+the Stack Pointer \texttt{SP} is represented by the corresponding \texttt{SP\_EL} register.
+
+As we are talking about user level code (\texttt{EL0}) only, we will ignore the \texttt{ELR} and \texttt{SPSR}
+registers, and consider \texttt{SP\_EL} registers to just be \texttt{SP}.
+
+The registers and their usage are as follows:{[}\citeproc{ref-armasm-user-guide}{4}, \citeproc{ref-arm-isa}{5}, \citeproc{ref-arm-pcs}{7}{]}
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{x0} to \texttt{x7}:\\
+  (Volatile) For passing arguments and return values for system and function calls.
+  Additional arguments are stored on the stack.
+  The return value is typically stored in \texttt{x0}. Caller assumes they will be modified.
+\item
+  \texttt{x8}:\\
+  (Volatile) Indirect result location register. It is also typically used for holding
+  syscall number.
+\item
+  \texttt{x9} to \texttt{x15}:\\
+  (Volatile) General purpose, for storing temporary data. Caller saved.
+\item
+  \texttt{x16} and \texttt{x17}:\\
+  (Volatile) Intra-procedure-call registers. Used as scratch
+  registers by system linker during calls.
+\item
+  \texttt{x18}:\\
+  Reserved for platform specific use. Usage is avoided for portability.
+\item
+  \texttt{x19} to \texttt{x28}:\\
+  (Non-volatile) Callee-saved registers. They must be preserved across calls.
+  If used, the callee must push the values to the stack at the beginning of function,
+  and restore them before returning.
+\item
+  \texttt{x29} (Frame Pointer \texttt{FP}):\\
+  (Non-volatile) Points to the start of the stack frame of a function.
+\item
+  \texttt{x30} (Link Register \texttt{LR}):\\
+  (Non-volatile) Holds the return address of a function call.
+  Can be used, but value must be restored before returning.
+\item
+  \texttt{SP} (Stack Pointer):\\
+  Special Register. Points to the top of the stack.
+  Can be used as base address register for loads and stores.
+\item
+  \texttt{PC} (Program Counter):\\
+  Special Register. Cannot be accessed explicitly.
+  Holds the address of the next instruction to be executed.
+\item
+  \texttt{PSTATE}:\\
+  Holds the various status and control flags for the processor.
+  They include Execution State, Interrupt Mask Bits, Processor Mode, Condition Flags,
+\end{itemize}
+
+\emph{Sidenote:} XNU (Apple iOS and MacOS) ABI's conventions differ from the aforementioned one.
+Although private and undocumented, it can be seen from the source {[}\citeproc{ref-apple-oss}{12}{]} that
+the main differences (as of 02 May 2025) are:{[}\citeproc{ref-so-xnu-abi}{21}{]}
+
+\begin{itemize}
+\tightlist
+\item
+  The immidiate value passed to \texttt{svc} instruction is ignored. \texttt{svc\ 0x80} is used
+  by the std library, which invokes a single handler.
+\item
+  The register used for syscalls is \texttt{x16} instead of \texttt{x8}.
+\item
+  The arguments are in \texttt{x0} through \texttt{x8} registers, supporting upto 9 arguments.
+  This is only used if there's an indirect syscall i.e.~\texttt{x16\ =\ 0}.
+\item
+  Stack is not used for passing arguments.
+\item
+  \texttt{x0} and \texttt{x1} can hold 2 return values. For example in case of \texttt{fork}.
+\item
+  Error is reported using the carry bit, in which case \texttt{x0} would hold
+  the error code.
+\item
+  Syscall numbers can be \emph{negative}.
+  UNIX ones are non-negative as usual, ranging between \texttt{0} and \texttt{557}.
+  Mach ones are negative with range between \texttt{-10} and \texttt{-100}.
+\end{itemize}
+
+\subsubsection{Calling (and Branching) Conventions}\label{calling-and-branching-conventions}
+
+Now that we know the details about the registers, their usage and their volatility for a caller,
+we can look at how functions are called in ARM architecture.
+
+The main difference here from \texttt{x86-64} ISA is that we don't have a \texttt{call} instruction.
+Instead branching instructions are used for conditionals, loops, and procedure calls.
+We mainly have 5 types of Branching instructions:
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{B\ label} (Branch):\\
+  Unconditional branch to a label within \texttt{PC} \(\pm\) \texttt{128MiB}.
+  Not a subroutine call or return.
+\item
+  \texttt{B.cond\ label} (Branch Conditionally):\\
+  Conditional branch to label within \texttt{PC} \(\pm\) \texttt{1MiB}.
+  Not a subroutine call or return.
+\item
+  \texttt{BL\ label} (Branch with Link):\\
+  Unconditional branch to label in range \(\pm\) \texttt{128MiB},
+  and store the return address (\texttt{PC+4}) in \texttt{x30}.
+  It is a subroutine call.
+\item
+  \texttt{BR\ xN}(Branch to Register):\\
+  Unconditional branch to address in register \texttt{xN}.
+  It is not a subroutine return.
+\item
+  \texttt{BLR\ xN} (Branch with Link to Register):\\
+  Unconditional branch to address in register \texttt{xN},
+  and store return address (\texttt{PC+4}) in \texttt{x30}.
+  It is a subroutine call.
+\end{itemize}
+
+There are many other branching instructions too, like \texttt{CBZ}, \texttt{TBZ} etc.
+but they are not relevant for us.
+
+Now, we get 2 types of functions:
+
+\begin{itemize}
+\tightlist
+\item
+  \emph{Non-leaf} - Functions that call other functions.
+\item
+  \emph{Leaf} - Functions that don't have any function calls in their body, and simply return.
+\end{itemize}
+
+\emph{Why is it relevant?}
+Because subroutine calls would use \texttt{BL}/\texttt{BLR} instructions,
+and store the return address in \texttt{x30}.{[}\citeproc{ref-arm-arch-manual}{6}{]}
+We don't need to worry about Leaf functions,
+but what about nested Non-leaf function calls? \texttt{x30} would get overwritten.\\
+To prevent that from happening, we make the distinction, and treat them differently.
+For Non-leaf functions, we simply save the value in \texttt{x30} at the start of the function,
+and restore it before return. It looks like this:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{foo:}
+\NormalTok{  // save x30}
+\NormalTok{  ...}
+\NormalTok{  bl bar  }\OperatorTok{//}\NormalTok{ call bar}
+\NormalTok{  ...}
+\NormalTok{  // }\PreprocessorTok{restore}\NormalTok{ x30}
+  \ControlFlowTok{ret}
+
+\FunctionTok{bar:}
+\NormalTok{  // save x30}
+\NormalTok{  ...}
+\NormalTok{  bl baz  }\OperatorTok{//}\NormalTok{ call baz}
+\NormalTok{  ...}
+\NormalTok{  // }\PreprocessorTok{restore}\NormalTok{ x30}
+  \ControlFlowTok{ret}
+
+\FunctionTok{baz:}
+\NormalTok{  ...}
+  \ControlFlowTok{ret}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{quote}
+\texttt{foo} and \texttt{bar} are non-leaf functions, whereas \texttt{baz} is a leaf function.
+\end{quote}
+
+\subsection{Pointer Authentication Code (PAC)}\label{pointer-authentication-code-pac}
+
+To understand PAC, we must first understand why and what does it aim to fix.
+
+\subsubsection{Return Oriented Programming (ROP)}\label{return-oriented-programming-rop}
+
+We have \sethlcolor{pink}\hl{discussed about stack smashing}\sethlcolor{correctioncolor}, and how arbitrary code execution can be prevented.
+This means that attackers can't inject and use arbitray code, but what is stopping
+them from using existing application code? Many applications are huge in size,
+and that means there is a lot of code that has execute permissions already.
+The attackers can analyze the application, and find out gadgets. Gadgets are executable
+fragments of code, usually ending with a return. For example:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{...}
+\BuiltInTok{add}\NormalTok{ x0}\OperatorTok{,}\NormalTok{ x1}\OperatorTok{,}\NormalTok{ x2}
+\ControlFlowTok{ret}
+\end{Highlighting}
+\end{Shaded}
+
+The attackers can then chain these gadgets together to form and execute their malicious code.
+Any library that is in the address space of the process is a potential source of gadgets.
+For example, GLIBC on ARM64, has almost 16,000 usable gadgets.{[}\citeproc{ref-riscyrop}{10}{]}
+This process is described in figure \ref{fig:rop-diag}.
+
+\begin{figure}
+
+{\centering \includegraphics[width=1\linewidth]{./imgs/placeholder-rop} 
+
+}
+
+\caption{Using ROP Gadgets}\label{fig:rop-diag}
+\end{figure}
+
+Although the process of finding and chaining the process is hard, it can be automated.
+ASLR can make the process harder, but it is still possible to carry out ROP attacks using
+Automated Exploit Generation (AEG) tools or information disclosure.{[}\citeproc{ref-aeg2014}{8}, \citeproc{ref-riscyrop}{10}{]}
+
+\subsubsection{Solution?}\label{solution}
+
+ROP exploits the fact that the return address is not checked, and can be used to
+jump to next gadget instead. What if we check the return address for corruption
+before using it? One way is using stack canaries, but even those can be bypassed
+by memory disclosure vulnerabilities.
+
+What if we sign the \texttt{LR}? The attacker would need a correctly signed address to replace it,
+increasing the difficulty of exploit generation.
+That's exactly what PAC does. Pointer Authentication
+takes advantage of the fact that pointers are 64-bit long, but not all 64-bits
+are needed to represent the virtual memory address.
+
+\begin{figure}
+
+{\centering \includegraphics[width=1\linewidth]{./imgs/placeholder-pac-bits} 
+
+}
+
+\caption{Pointer Layout on ARM64}\label{fig:pac-bits}
+\end{figure}
+
+PAC uses the top bits of the pointer to store a signature of the pointer
+(as shown in fig \ref{fig:pac-bits}), and they aren't
+used as a part of the address. At the start of the function, the \texttt{LR} is signed.
+Then just before the return, the address is authenticated using PAC. If the check fails,
+an exception is raised. Now, to perform a ROP attack, the attacker needs gadget addresses
+(made harder with ASLR), and have properly signed pointers to those addresses.
+To get a signed pointer, they would need to access a signing gadget.
+
+\subsubsection{Forming a PAC}\label{forming-a-pac}
+
+ARM provides 5 128-bit keys. Each of them is stored in a pair of 64-bit system registers:
+
+\begin{itemize}
+\tightlist
+\item
+  2 keys, A and B, for instruction pointers
+\item
+  2 keys, A and B, for data pointers
+\item
+  1 key for general use
+\end{itemize}
+
+And these registers are only accessible in EL1 and above (refer \ref{fig:armtz-arch}).
+The signature is formed by using the key, address and a modifier as shown in figure \ref{fig:pac-diag}.
+
+\begin{figure}
+
+{\centering \includegraphics[width=1\linewidth]{./imgs/placeholder-pac-diag} 
+
+}
+
+\caption{PAC formation}\label{fig:pac-diag}
+\end{figure}
+
+The strength of PAC depends on the size of the configured virtual address.
+The keys have limited life spans, that is, each time the application is launched, the keys can be rotated.
+And each application can have its own independent set of keys.
+The modifier should be the same for sign-authenticate instruction pair on entry/exit.
+So it specifies the context in which the pointer is valid in. For example,
+using \texttt{SP} as the modifier would give us a PAC that's valid only for that call of the function,
+as \texttt{SP} may be different on future calls.
+
+The attacker would need to get every pointer correct in the chain, otherwise an
+exception would be raised.
+
+\emph{Sidenote:}
+In ARMv9.5-A, \texttt{PACIxSPPC} and \texttt{AUTIxSPPC} instructions were added to use \texttt{SP\ +\ PC}
+as the modifier to sign \texttt{LR}.
+It gives better security by tying the caller and callee to the address,
+and uniquely associating PAC with that particular instance of function usage.
+
+\subsubsection{Using NOP space}\label{using-nop-space}
 
 \sethlcolor{pink}\hl{Edit/Add to this part}\sethlcolor{correctioncolor}
+
+\sethlcolor{pink}\hl{Add example asm}\sethlcolor{correctioncolor}
 
 \subsection{BTI}\label{bti}
 
@@ -665,7 +952,7 @@ We'll also discuss some architecture level features that can be used for CFI and
 \caption{ARM TrustZone Architecture}\label{fig:armtz-arch}
 \end{figure}
 
-ARM TrustZone{[}\citeproc{ref-armtz}{3}{]} is Arm's security architecture in Arm A-profile architecture.
+ARM TrustZone{[}\citeproc{ref-armtz}{3}{]} is Arm's security architecture in ARM A-profile architecture.
 It provides 2 execution environments with hardware enforced isolation between them:
 
 \begin{enumerate}
@@ -681,7 +968,7 @@ It provides 2 execution environments with hardware enforced isolation between th
   It also has a smaller attack surface due to its simplicity and size.
 \end{enumerate}
 
-There are 2 security states Arm architecture - Non-secure and Secure which map
+There are 2 security states ARM architecture - Non-secure and Secure which map
 to Rich and Trusted worlds respectively.
 Exception levels are the levels of software execution privileges.
 These mappings are specified in figure \ref{fig:armtz-arch}.
@@ -717,7 +1004,7 @@ This process is shown in figure \ref{fig:smc-convention}.
 \subsection{OP-TEE}\label{op-tee}
 
 One example of a Trusted Kernel is OP-TEE. It was developed by ST-Ericsson,
-and is now an open source project maintained by Linaro.{[}\citeproc{ref-optee}{8}{]}.
+and is now an open source project maintained by Linaro.{[}\citeproc{ref-optee}{15}{]}.
 The rich applications call OP-TEE Driver through TEE Client API. The Driver
 is then responsible for the communication with the OP-TEE kernel.
 
@@ -736,8 +1023,8 @@ is then responsible for the communication with the OP-TEE kernel.
 
 As mentioned in \hyperref[cfahistory]{CFA history}, attestation has rarely targeted whole programs.
 And their approaches did not scale when applied to whole program paths, mainly
-due to the sheer number of domain transitions between REE/TEE.{[}\citeproc{ref-blast}{14}{]}
-BLAST{[}\citeproc{ref-blast}{14}{]} was developed in 2023 with whole program paths in mind.
+due to the sheer number of domain transitions between REE/TEE.{[}\citeproc{ref-blast}{22}{]}
+BLAST{[}\citeproc{ref-blast}{22}{]} was developed in 2023 with whole program paths in mind.
 They took inspiration from program profiling literature to decrease the said overheads.
 
 \subsubsection{How it works}\label{how-it-works}
@@ -822,20 +1109,20 @@ execution if the log had been modified.
 \paragraph{Optimizing log entries:}\label{optimizing-log-entries}
 
 BLAST takes inspiration from profiling literature to place instrumentation in
-an optimal fashion. It uses Ball-Larus algorithm {[}\citeproc{ref-balllarus}{4}{]} to selectively
+an optimal fashion. It uses Ball-Larus algorithm {[}\citeproc{ref-balllarus}{9}{]} to selectively
 add instrumentation to the edges of a CFG. The instrumentation manipulates the value of a counter,
 which at the end of the CFG would be between \texttt{0} and \texttt{N-1}. Where \texttt{N} is the number
 of acyclic paths in the CFG. This counter can be used to uniquely identify the
 runtime path that was taken by the function.
 
 This results in \texttt{2x} compact representation of paths compared to OAT's bit tracing,
-and it places instrumentation at fewer locations.{[}\citeproc{ref-blast}{14}{]}
+and it places instrumentation at fewer locations.{[}\citeproc{ref-blast}{22}{]}
 
 \paragraph{WPP:}\label{wpp}
 
 BLAST then takes the large log, and compactly represents it using a context-free
 grammar called WPP. It is an extension of Ball-Larus numbering, to build a single
-control flow path through the complete program.{[}\citeproc{ref-laruswpp}{7}, \citeproc{ref-blast}{14}{]}
+control flow path through the complete program.{[}\citeproc{ref-laruswpp}{14}, \citeproc{ref-blast}{22}{]}
 This takes the log, that can grow upto MBs or even GBs in size, and converts into
 a WPP representation that's just a few hundred bytes big.
 
@@ -847,7 +1134,7 @@ a WPP representation that's just a few hundred bytes big.
 
 The thread responsible of committing the log to TEE would have to run in parallel
 to the program. Single core settings had an average runtime overhead of 175\%
-as compared to 67\% of multi-core execution.{[}\citeproc{ref-blast}{14}{]}
+as compared to 67\% of multi-core execution.{[}\citeproc{ref-blast}{22}{]}
 
 Reserving 2 registers may cause compatibility issues, especially with programs
 that rely on inline assembly. But as shown by CFA+{[}\citeproc{ref-cfaplus}{1}{]},
@@ -1012,48 +1299,80 @@ This first appendix includes an R chunk that was hidden in the document (using \
 \CSLLeftMargin{{[}3{]} }%
 \CSLRightInline{Arm. 2020. TrustZone for Armv8-a. Retrieved from \url{https://developer.arm.com/-/media/Arm\%20Developer\%20Community/PDF/Learn\%20the\%20Architecture/TrustZone\%20for\%20Armv8-A.pdf?revision=c3134c8e-f1d0-42ff-869e-0e6a6bab824f}}
 
-\bibitem[\citeproctext]{ref-balllarus}
+\bibitem[\citeproctext]{ref-armasm-user-guide}
 \CSLLeftMargin{{[}4{]} }%
+\CSLRightInline{Arm. 2023. Arm® compiler armasm user guide v6.6.5. Retrieved from \url{https://developer.arm.com/documentation/dui0801/l}}
+
+\bibitem[\citeproctext]{ref-arm-isa}
+\CSLLeftMargin{{[}5{]} }%
+\CSLRightInline{Arm. 2024. Learn the architecture - A64 instruction set architecture guide v1.2. Retrieved from \url{https://developer.arm.com/documentation/102374/0102}}
+
+\bibitem[\citeproctext]{ref-arm-arch-manual}
+\CSLLeftMargin{{[}6{]} }%
+\CSLRightInline{Arm. 2024. Arm architecture reference manual for a-profile architecture vL.a. Retrieved from \url{https://developer.arm.com/documentation/ddi0487/la/}}
+
+\bibitem[\citeproctext]{ref-arm-pcs}
+\CSLLeftMargin{{[}7{]} }%
+\CSLRightInline{Arm. 2025. Procedure call standard for the arm® 64-bit architecture. Retrieved from \url{https://github.com/ARM-software/abi-aa/blob/main/aapcs64/aapcs64.rst}}
+
+\bibitem[\citeproctext]{ref-aeg2014}
+\CSLLeftMargin{{[}8{]} }%
+\CSLRightInline{Thanassis Avgerinos, Sang Kil Cha, Alexandre Rebert, Edward J Schwartz, Maverick Woo, and David Brumley. 2014. Automatic exploit generation. \emph{Communications of the ACM} 57, 2 (2014), 74--84.}
+
+\bibitem[\citeproctext]{ref-balllarus}
+\CSLLeftMargin{{[}9{]} }%
 \CSLRightInline{Thomas Ball and James R Larus. 1996. Efficient path profiling. In \emph{Proceedings of the 29th annual IEEE/ACM international symposium on microarchitecture. MICRO 29}, 1996. IEEE, 46--57.}
 
+\bibitem[\citeproctext]{ref-riscyrop}
+\CSLLeftMargin{{[}10{]} }%
+\CSLRightInline{Tobias Cloosters, David Paaßen, Jianqiang Wang, Oussama Draissi, Patrick Jauernig, Emmanuel Stapf, Lucas Davi, and Ahmad-Reza Sadeghi. 2022. Riscyrop: Automated return-oriented programming attacks on risc-v and arm64. In \emph{Proceedings of the 25th international symposium on research in attacks, intrusions and defenses}, 2022. 30--42.}
+
 \bibitem[\citeproctext]{ref-godefroid2012sage}
-\CSLLeftMargin{{[}5{]} }%
+\CSLLeftMargin{{[}11{]} }%
 \CSLRightInline{Patrice Godefroid, Michael Y Levin, and David Molnar. 2012. SAGE: Whitebox fuzzing for security testing. \emph{Communications of the ACM} 55, 3 (2012), 40--44.}
 
+\bibitem[\citeproctext]{ref-apple-oss}
+\CSLLeftMargin{{[}12{]} }%
+\CSLRightInline{Apple Inc. 2025. XNU source - apple OSS distributions. Retrieved from \url{https://github.com/apple-oss-distributions/xnu}}
+
 \bibitem[\citeproctext]{ref-kern1999formal}
-\CSLLeftMargin{{[}6{]} }%
+\CSLLeftMargin{{[}13{]} }%
 \CSLRightInline{Christoph Kern and Mark R Greenstreet. 1999. Formal verification in hardware design: A survey. \emph{ACM Transactions on Design Automation of Electronic Systems (TODAES)} 4, 2 (1999), 123--193.}
 
 \bibitem[\citeproctext]{ref-laruswpp}
-\CSLLeftMargin{{[}7{]} }%
+\CSLLeftMargin{{[}14{]} }%
 \CSLRightInline{James R Larus. 1999. Whole program paths. \emph{ACM SIGPLAN Notices} 34, 5 (1999), 259--269.}
 
 \bibitem[\citeproctext]{ref-optee}
-\CSLLeftMargin{{[}8{]} }%
+\CSLLeftMargin{{[}15{]} }%
 \CSLRightInline{Linaro Limited. 2025. OPTEE - TrustedFirmware. Retrieved from \url{https://www.trustedfirmware.org/projects/op-tee/}}
 
 \bibitem[\citeproctext]{ref-luk2005dynamic}
-\CSLLeftMargin{{[}9{]} }%
+\CSLLeftMargin{{[}16{]} }%
 \CSLRightInline{Chi-Keung Luk, Robert Cohn, Robert Muth, Harish Patil, Artur Klauser, Geoff Lowney, Steven Wallace, Vijay Janapa Reddi, and Kim Hazelwood. 2005. Pin: Building customized program analysis tools with dynamic instrumentation. \emph{Acm sigplan notices} 40, 6 (2005), 190--200.}
 
 \bibitem[\citeproctext]{ref-millerfuzzing}
-\CSLLeftMargin{{[}10{]} }%
+\CSLLeftMargin{{[}17{]} }%
 \CSLRightInline{Barton P Miller, Lars Fredriksen, and Bryan So. 1990. An empirical study of the reliability of UNIX utilities. \emph{Communications of the ACM} 33, 12 (1990), 32--44.}
 
 \bibitem[\citeproctext]{ref-artoftesting}
-\CSLLeftMargin{{[}11{]} }%
+\CSLLeftMargin{{[}18{]} }%
 \CSLRightInline{Glenford J Myers, Corey Sandler, and Tom Badgett. 2011. \emph{The art of software testing}. John Wiley \& Sons.}
 
 \bibitem[\citeproctext]{ref-quinlan2009source}
-\CSLLeftMargin{{[}12{]} }%
+\CSLLeftMargin{{[}19{]} }%
 \CSLRightInline{Daniel Quinlan and Thomas Panas. 2009. Source code and binary analysis of software defects. In \emph{Proceedings of the 5th annual workshop on cyber security and information intelligence research: Cyber security and information intelligence challenges and strategies}, 2009. 1--4.}
 
 \bibitem[\citeproctext]{ref-bruceessay}
-\CSLLeftMargin{{[}13{]} }%
+\CSLLeftMargin{{[}20{]} }%
 \CSLRightInline{Bruce Schneier. 2000. The process of security. Retrieved from \url{https://www.schneier.com/essays/archives/2000/04/the_process_of_secur.html}}
 
+\bibitem[\citeproctext]{ref-so-xnu-abi}
+\CSLLeftMargin{{[}21{]} }%
+\CSLRightInline{Siguza. 2023. XNU systemcall ABI summary - StackOverflow. Retrieved from \url{https://stackoverflow.com/a/56993314}}
+
 \bibitem[\citeproctext]{ref-blast}
-\CSLLeftMargin{{[}14{]} }%
+\CSLLeftMargin{{[}22{]} }%
 \CSLRightInline{Nikita Yadav and Vinod Ganapathy. 2023. Whole-program control-flow path attestation. In \emph{Proceedings of the 2023 ACM SIGSAC conference on computer and communications security}, 2023. 2680--2694.}
 
 \end{CSLReferences}
