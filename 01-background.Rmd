@@ -342,6 +342,26 @@ an exception is raised. Now, to perform a ROP attack, the attacker needs gadget 
 (made harder with ASLR), and have properly signed pointers to those addresses.
 To get a signed pointer, they would need to access a signing gadget.
 
+After adding the PAC instructions, a function would look like this:
+```asm
+foo:
+  paciasp
+  ...
+  autiasp
+  ret
+```
+*Note:* If we don't need backwards compatibility, we can use `retaa` which is equivalent to `autiasp + ret`.
+
+#### Using NOP space
+
+A subset of the PAC instructions are in the NOP-space. That means, if a 
+library or application uses the NOP-space instructions to add PAC support, 
+they can still run on old processors that do not support PAC features. 
+The instruction would just be treated as a `NOP`.
+These include: `AUTIx1716`, `AUTIxSP`, `AUTIxZ`, `PACIx1716`, `PACIxSP`, `PACIxZ` and `XPACLRI`.
+Where (lower) `x` is either `A` or `B` depending on the key to be used. More in next section on keys.
+There are many more instructions, but we'll just talk about these NOP-space ones.
+
 #### Forming a PAC
 
 ARM provides 5 128-bit keys. Each of them is stored in a pair of 64-bit system registers:
@@ -367,16 +387,21 @@ as `SP` may be different on future calls.
 The attacker would need to get every pointer correct in the chain, otherwise an 
 exception would be raised.
 
+#### But what do these instructions mean?
+
+- `AUTI` prefix is an Authenticate instruction.
+- `PACI` prefix is a PAC computation instruction.
+- `A/B` at the 5th instruction letter determines the key to be used.
+- `1716` suffix means address is in `x17`, modifier in `x16`.
+- `SP` suffix means address is in `x30`, modifier is `SP`.
+- `Z` suffix means address is in `x30`, modifier is `0`.
+- `XPACLRI` is used to strip PAC from address in `x30`.
+
 *Sidenote:*
-In ARMv9.5-A, `PACIxSPPC` and `AUTIxSPPC` instructions were added to use `SP + PC` 
-as the modifier to sign `LR`.
+From ARMv9.4-A, under feature `FEAT_PAuth_LR`, `PACIxSPPC` and `AUTIxSPPC` 
+instructions were added to use `SP + PC` as the modifier to sign `LR`.
 It gives better security by tying the caller and callee to the address, 
 and uniquely associating PAC with that particular instance of function usage. 
-
-#### Using NOP space
-[Edit/Add to this part]{highlight="pink"}
-
-[Add example asm]{highlight="pink"}
 
 ### BTI
 [Edit/Add to this part]{highlight="pink"}

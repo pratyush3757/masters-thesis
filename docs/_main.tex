@@ -888,6 +888,30 @@ an exception is raised. Now, to perform a ROP attack, the attacker needs gadget 
 (made harder with ASLR), and have properly signed pointers to those addresses.
 To get a signed pointer, they would need to access a signing gadget.
 
+After adding the PAC instructions, a function would look like this:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{foo:}
+\NormalTok{  paciasp}
+\NormalTok{  ...}
+\NormalTok{  autiasp}
+  \ControlFlowTok{ret}
+\end{Highlighting}
+\end{Shaded}
+
+\emph{Note:} If we don't need backwards compatibility, we can use \texttt{retaa} which is equivalent to \texttt{autiasp\ +\ ret}.
+
+\subsubsection{Using NOP space}\label{using-nop-space}
+
+A subset of the PAC instructions are in the NOP-space. That means, if a
+library or application uses the NOP-space instructions to add PAC support,
+they can still run on old processors that do not support PAC features.
+The instruction would just be treated as a \texttt{NOP}.
+These include: \texttt{AUTIx1716}, \texttt{AUTIxSP}, \texttt{AUTIxZ}, \texttt{PACIx1716}, \texttt{PACIxSP}, \texttt{PACIxZ} and \texttt{XPACLRI}.
+Where (lower) \texttt{x} is either \texttt{A} or \texttt{B} depending on the key to be used. More in next section on keys.
+There are many more instructions, but we'll just talk about these NOP-space ones.
+
 \subsubsection{Forming a PAC}\label{forming-a-pac}
 
 ARM provides 5 128-bit keys. Each of them is stored in a pair of 64-bit system registers:
@@ -925,17 +949,31 @@ as \texttt{SP} may be different on future calls.
 The attacker would need to get every pointer correct in the chain, otherwise an
 exception would be raised.
 
+\subsubsection{But what do these instructions mean?}\label{but-what-do-these-instructions-mean}
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{AUTI} prefix is an Authenticate instruction.
+\item
+  \texttt{PACI} prefix is a PAC computation instruction.
+\item
+  \texttt{A/B} at the 5th instruction letter determines the key to be used.
+\item
+  \texttt{1716} suffix means address is in \texttt{x17}, modifier in \texttt{x16}.
+\item
+  \texttt{SP} suffix means address is in \texttt{x30}, modifier is \texttt{SP}.
+\item
+  \texttt{Z} suffix means address is in \texttt{x30}, modifier is \texttt{0}.
+\item
+  \texttt{XPACLRI} is used to strip PAC from address in \texttt{x30}.
+\end{itemize}
+
 \emph{Sidenote:}
-In ARMv9.5-A, \texttt{PACIxSPPC} and \texttt{AUTIxSPPC} instructions were added to use \texttt{SP\ +\ PC}
-as the modifier to sign \texttt{LR}.
+From ARMv9.4-A, under feature \texttt{FEAT\_PAuth\_LR}, \texttt{PACIxSPPC} and \texttt{AUTIxSPPC}
+instructions were added to use \texttt{SP\ +\ PC} as the modifier to sign \texttt{LR}.
 It gives better security by tying the caller and callee to the address,
 and uniquely associating PAC with that particular instance of function usage.
-
-\subsubsection{Using NOP space}\label{using-nop-space}
-
-\sethlcolor{pink}\hl{Edit/Add to this part}\sethlcolor{correctioncolor}
-
-\sethlcolor{pink}\hl{Add example asm}\sethlcolor{correctioncolor}
 
 \subsection{BTI}\label{bti}
 
