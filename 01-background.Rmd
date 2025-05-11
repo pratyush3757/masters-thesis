@@ -83,7 +83,22 @@ capabilities [afforded to us by them.]{highlight="pink"}
 ### CFA
 
 #### Why?
-[Edit/Add to this part]{highlight="pink"}
+As noted previously, analysis, testing and even adding CFI doesn't mean the program is secure.
+Also, there are many use-cases where we need an unforgeable evidence of the control flow
+of a given program. For example, in a syringe pump, where this evidence could be 
+needed by hospital and insurance that it indeed delivered the given dosage and correctly at that. 
+This can be achieved by path attestation, where the verifier gets a non-repudiable 
+proof of execution on prover for the given input.
+Path attestation also acts as a lighter alternative to verifiable computation [?? CITEME].
+
+There are other integrity measurements too that can attest to various properties 
+of the system being tested.
+Like, weather the system satisfies certain properties [?? CITEME], it booted up 
+with particular software stack [?? CITEME], or that it executed certain operations correctly [?? CITEME].
+
+The work done on CFA has been parallel to CFI, but with an aligned objective [@sok].
+We will focus on path attestation, and whole program path in particular. 
+The reason for that is explained later in [CFA techniques subsection](#cfatechniques).
 
 #### General Overview of the process
 ```{r cfa-workflow, fig.cap="Typical CFA Interaction", out.width='50%', fig.align='center', fig.pos='H'}
@@ -103,7 +118,8 @@ This is where a Root of Trust (RoT) comes in.
 A Root of Trust (RoT) is a part of the system that we essentially *trust* to work 
 properly even in adversarial conditions. This trust in the mechanism is assumed and not derived.
 It then serves as the foundation on which the rest of the security guarantees 
-of the system can be derived.
+of the system can be derived. Commonly, systems have Trusted Execution Environments 
+(TEE) like Intel SGX [?? CITEME] or ARM TrustZone [?? CITEME] that act as the RoT.
 
 In our case, it's a piece of hardware on Prv that monitors the system, validates its state, 
 and generates the CFlog and CFreport that's sent to Vrf.
@@ -113,15 +129,72 @@ It does so by checking if CFlog contains a valid control flow of the program
 for the input. If the path is invalid, Vrf can also analyze CFlog to detect 
 deviations and determine the cause.
 
-#### History and Techniques used{#cfahistory}
+#### Techniques used{#cfatechniques}
+Remote attestation to establish memory content integrity has been explored previously 
+in various domains[??Add citations]{highlight="pink"}.
+As TEEs were generally historically unavailable on low-end embedded devices, 
+software based attestation techniques like SWATT [?? CITEME] and PIONEER [??CITEME] were proposed.
+They implemented software based self-checksum functions as a means of attestation.
+They relied on precise timing measurements, and were applicable only in settings where
+comunnication delay between Vrf and Prv is deterministic. 
+
+Then there are Hybrid attestation techniques, that aim to minimize changes to 
+underlying hardware, while giving same guarantees as hardware-based techniques.
+VRASED [?? CITEME] adds integrity checks in software, while using trusted hardware to control the checks.
+
+But these techniques measure the state of Prv only when remote attestation is executed.
+They are oblivious to program's state between two consecutive measurements, or 
+information of program before measurements. That means they suffer from 
+time-of-check to time-of-use (TOCTOU) attacks. There are proposed designes that avoid this limitation.[?? CITEME RATA]
+
+Works in path attestation, where the control flow path of the program is recorded 
+for the proof, include CFLAT [?? CITEME CFLAT] and OAT [?? CITEME OAT].
+We will focus on these two, as they can represent the main approaches to path 
+attestation, and other works have essentially similar methods [?? CITEME].
+
+CFLAT computes the hash of basic blocks by adding instrumentation at their end, 
+and then accumulates their hash which represents the execution path of the program.
+The Vrf then compares it with historically collected expected hashes for known 
+execution paths.
+OAT on the other hand, adds instrumentation after conditionals, which signifies 
+the direction the branches took. This, leads to less instrumentation compared to 
+CFLAT where every edge of the CFG is instrumented.
+This information is saved in the TEE in the form of a bit-trace, along with 
+jump, call, and return addresses.
+The Vrf then uses the bit trace and other values to perform a symbolic execution
+of the program for verification.
+Their instrumentation approaches for the CFG of a program 
+are shown in figure \@ref(fig:cflat-oat-instruments).
+[Add cflat-oat-instruments.png]{highlight="pink"}
+
+CFLAT and OAT have logging events for each Conditional Branch, Indirect function call, and Function exit.
+Additionally, CFLAT also have events for Unconditional Branches and Direct function calls.
+All of these events has a domain transition to TEE for logging. Which, when large codebases
+are taken in account, can become a performace bottleneck due to the sheer number of them [@blast].
+
+[?? TABLE]{highlight="pink"} describes the number of TEE domain switches at runtime,
+as seen for CFLAT and OAT for Embench-IOT benchmarks, when applied to whole programs.
+It also shows the amount of extensive instrumentation that is needed for path attestation. 
+Despite such intrusive amount of instrumentation, which also translates into 
+a proportional number of domain switches, CFLAT and OAT report fairly low runtime overheads.
+CFLAT reports runtime overhead in seconds when evaluated on a syringe pump application.
+OAT reports an average runtime overhead of 2.7% on 5 embedded applications.
+
+This low overhead for both can be explained by the fact that their application 
+has been to small programs or "operations" that span a few thousand control-flow events.
+When applied to whole programs, the overhead turns out to be more than 1000x.[@blast]
+This means, a program that takes a few seconds would take hours to complete.
+Other previous works, like CFLAT and OAT, have mostly been applied to small 
+programs or to programs that work in specialized environments [?? CITEME][@blast].
+Prior work has also shown that a Vrf can miss attacks that are directed against
+a program when paths in only some parts of it are attested [?? CITEME].
+Therefore, it's better for Vrf to be able to attest the entire execution of a program.
+
 [Edit/Add to this part]{highlight="pink"}
 
 - History
 - CFLAT with technical details + limitations
 - OAT with improvements + limitations
-- CFLAT and OAT had logging events for each Conditional Branch, Indirect function call, and Function exit.
-Additionally, CLFAT also had events for Unconditional Branches and Direct function calls.
-All of these events has a domain transition to TEE for logging.
 - Whole programs not focused.
 - Mention BLAST, just brief explaination. Link to its section.
 - Also mention constant reporting
@@ -137,7 +210,7 @@ Before diving into the implementation details, we'll first discuss the ARM Archi
 We'll also discuss some architecture level features that can be used for CFI and CFA.
 
 ### ARM Assembly Basics
-We will only focus on AArch64, the 64-bit instruction set, and on the ARMv8-A profile[@arm-arch-manual].
+We will only focus on AArch64, the 64-bit instruction set, and on the ARMv8-A and later profiles[@arm-arch-manual].
 
 #### Registers
 Let us first talk about Registers.
@@ -290,12 +363,13 @@ baz:
 > `foo` and `bar` are non-leaf functions, whereas `baz` is a leaf function.
 
 ### Pointer Authentication Code (PAC)
+Pointer Authentication was added in ARMv8.3-A under the mandatory feature `FEAT_PAuth`.[@arm-feat-names]
 To understand PAC, we must first understand why and what does it aim to fix.
 
 #### Return Oriented Programming (ROP)
 
 We have [discussed about stack smashing]{highlight="pink"}, and how arbitrary code execution can be prevented.
-This means that attackers can't inject and use arbitray code, but what is stopping 
+This means that attackers can't inject and use arbitrary code, but what is stopping 
 them from using existing application code? Many applications are huge in size,
 and that means there is a lot of code that has execute permissions already.
 The attackers can analyze the application, and find out gadgets. Gadgets are executable 
@@ -350,17 +424,19 @@ foo:
   autiasp
   ret
 ```
-*Note:* If we don't need backwards compatibility, we can use `retaa` which is equivalent to `autiasp + ret`.
+*Note:* If we don't need backwards compatibility, we can use `RETAA` which is equivalent to `AUTIASP + RET`.
 
 #### Using NOP space
 
-A subset of the PAC instructions are in the NOP-space. That means, if a 
+A subset of the PAC instructions are in the NOP-space. That means, if a
 library or application uses the NOP-space instructions to add PAC support, 
 they can still run on old processors that do not support PAC features. 
 The instruction would just be treated as a `NOP`.
+This is accomplished by encoding the instructions as "hints" to the processor.
 These include: `AUTIx1716`, `AUTIxSP`, `AUTIxZ`, `PACIx1716`, `PACIxSP`, `PACIxZ` and `XPACLRI`.
-Where (lower) `x` is either `A` or `B` depending on the key to be used. More in next section on keys.
-There are many more instructions, but we'll just talk about these NOP-space ones.
+Where (lower) `x` is either `A` or `B` depending on the key to be used.[@sipearl]
+More in next section on keys. There are many more instructions, 
+but for now we'll just talk about these NOP-space ones.
 
 #### Forming a PAC
 
@@ -391,7 +467,7 @@ exception would be raised.
 
 - `AUTI` prefix is an Authenticate instruction.
 - `PACI` prefix is a PAC computation instruction.
-- `A/B` at the 5th instruction letter determines the key to be used.
+- `A/B` after the prefix determines the key to be used.
 - `1716` suffix means address is in `x17`, modifier in `x16`.
 - `SP` suffix means address is in `x30`, modifier is `SP`.
 - `Z` suffix means address is in `x30`, modifier is `0`.
@@ -403,8 +479,58 @@ instructions were added to use `SP + PC` as the modifier to sign `LR`.
 It gives better security by tying the caller and callee to the address, 
 and uniquely associating PAC with that particular instance of function usage. 
 
-### BTI
-[Edit/Add to this part]{highlight="pink"}
+At the end, when enabled in the codebase, PAC looks like this:
+[Add final example of PAC]{highlight="pink"}
+```asm
+// source
+// generated asm
+```
+
+### Branch Target Identification (BTI)
+Branch Target Identification was added in ARMv8.5-A under the mandatory feature `FEAT_BTI`.[@arm-feat-names]
+Let us first understand where PAC was still inadequate, and what could be improved by using BTI.
+
+#### Jump Oriented Programming (JOP)
+PAC could add protection against ROP attacks by adding checks to ensure a 
+function returns to its true caller. That is protected the returning jump points.
+But what about calling jump points like indirect branches, function pointers, 
+and case statements? JOP attacks use these points to pivot to next gadget in 
+sequence instead of `RET`. So JOP gadgets would end with `BR`, `BLR` or similar instructions instead.
+
+`BR` and similar instructions use the register to determine the jump point, which
+makes it hard to determine the target statically, or that the target would be valid.
+This makes it easy for the attacker to use them to execute their JOP chain.
+
+#### Solution?
+If it is hard to statically secure the jump points, how about the landing points?
+The hijacked jumps could target arbitrary locations to pivot to.
+But valid code only jumps to particular locations. So, what if those locations 
+can be marked as landing points, and any jump that doesn't land on them becomes invalid?
+
+This is the idea behind BTI. The branch targets are identified and marked with `BTI` 
+instructions that act as landing pads. Any jump that does not land on a `BTI` instruction 
+generates a Branch Target Exception.[^bti-exceptions]
+Function returns are also a type of indirect branch, but they aren't required 
+to target the landing pads. Also, for function entry, 
+pointer signing instructions `PACIxSP` and `PACIxZ` act like landing pads.
+
+[^bti-exceptions]: `BRK, BTI, HLT, PACIASP` and `PACIBSP` are an exception to this. 
+Refer instruction docs for details.[@armasm-user-guide]
+
+The `BTI` instruction has an argument that further specifies what types of indirect branch can it be targeted by:
+
+- `BTI c`: Indirect function calls (`BLR`)
+- `BTI j`: Indirect jumps (`BR`), e.g. case-statements
+- `BTI jc`: Indirect function calls or jumps
+
+There are some more rules to BTI like processor states for each target instruction type.
+Please refer the Sipearl Whitepaper[@sipearl], or Arm Documentation for PAC and BTI[@arm-pacbti] for more details.
+
+#### NOP-space
+Instructions added under BTI are also in NOP-space, so that all applications and 
+libraries that use it would be backwards compatible with old processors.
+
+[Add BTI example here]{highlight="pink"}
 
 ### ARM TrustZone
 ```{r armtz-arch, fig.cap="ARM TrustZone Architecture", out.width='100%', fig.align='center', fig.pos='H'}
@@ -457,7 +583,7 @@ knitr::include_graphics("./imgs/placeholder-optee.png")
 ## Primary Works
 
 ### BLAST
-As mentioned in [CFA history](#cfahistory), attestation has rarely targeted whole programs.
+As mentioned in [CFA techniques](#cfatechniques), attestation has rarely targeted whole programs.
 And their approaches did not scale when applied to whole program paths, mainly 
 due to the sheer number of domain transitions between REE/TEE.[@blast]
 BLAST[@blast] was developed in 2023 with whole program paths in mind.
