@@ -51,8 +51,6 @@ by the secure monitor.
 
 ## How to add Integrity guarantees?
 
-- code attacks + diag (optional)
-
 As discussed in [CFI](#cfi), when talking about code reuse attacks, they can be further divided into 
 Control flow hijacking (control data) and Data only (non-control data) attacks.
 We will talk about preventing control flow hijacking attacks first.
@@ -70,21 +68,63 @@ Use of `RET` instructions to chain gadgets to run arbitrary code would become ha
 as all returns would be preceded by an address check. Failing which would generate
 a hardware level exception.
 
-- cfa would detect ...
-As for data only attacks, [CFA part would handle it. how? repeat this ans in #qual eval]{highlight="pink"}
+[
+cfa would detect ...  
+As for data only attacks, CFA part would handle it. how? repeat this ans in #qual eval
+]{highlight="pink"}
 
+We can also optionally enable Memory Tagging Extension (MTE), or memory coloring,
+an Armv8.5-A extension [@arm-pacbti]. It enables detection of memory safety violations like use after free
+and buffer overflows by assigning tags to memory regions. Any data access would 
+require a tag check in the address. Checking and Violations can be handled both
+synchronously and asynchronously depending on performance needs.
+As the tags, like PAC, use upper bits of the address, PAC would have fewer bits available.
 
-- mte added optionally
+But, MTE support for processors and Kernel is in early stage and is actively being worked upon.[@mte-kern-patch]
+Therefore, we will skip this feature for now and it can be used in the future when platforms
+have better support for it.
 
-Now if we don't need backwards compatibility given by PAC and BTI in the form of
-NOP-space instructions, we can have some more features provided by them.
+We have some more instructions provided by the PAC and BTI feature flags,
+like `BLRAA` - Authenticate and branch, or `RETAA` - Authenticate and return.
+But they are not in the NOP-space. So for the sake of backwards compatibility,
+we choose to not use them for now.
 
+#### But, do PAC and BTI help in limiting the number of gadgets?
 
-- optimizations if compatibility not needed
-- do they help in limiting gadgets?
-[arm gadgets pac+bti.jpg]{highlight="pink"}
-- what about size overhead?
-this is on top of blast.
+According to ARM's testing, when these features were enabled for GLIBC, the number 
+of available gadgets was reduced by 97.65%. This can be seen in figure \@ref(fig:pac-bti-gadgets).
+Similar results were also seen for CFA+[@cfaplus].
+
+```{r pac-bti-gadgets, fig.cap="ROP and JOP gadgets in GLIBC", out.width='100%', fig.align='center'}
+knitr::include_graphics("./imgs/placeholder-pac-bti-gadgets.png")
+```
+
+#### What about the binary size overhead then?
+
+Binary size overhead for these, when checked for GLIBC by ARM, was 2.9% for both
+when considering backwards compatibility. If compiled for Armv8.3-A and later,
+it drops to 1.61% [@arm-pacbti].
+This overhead is less significant when compared to BLAST instrumentation, which
+came to 64% without inlining [@blast].
+
+[We will discuss this further in #eval after we implement extended BLAST.]{highlight="pink"}
+
+#### What is our target compatibility?
+
+As mentioned previously, PAC and BTI can be backwards compatible with ARMv8-A processors
+that do not support them, but will just be treated as `NOP` instructions.
+The same binary would run on Armv8.5-A processors with PAC + BTI guarantees, and 
+Armv8.3-A with BTI turned off.
+[
+We also should keep in mind that PAC support is only enabled if the OS and the 
+shared libraries are also PAC enabled.
+]{highlight="pink"}
+[?? VERIFY]
+
+#### What happens to BLAST's portability to other platforms?
+
+[Edit/Add here]{highlight="pink"}
+
 - what is our target compatibility then?
 ARM8? arm9? backwards? #eval
 - portability to other platforms? can be added to other CFA? #eval
@@ -92,20 +132,31 @@ ARM8? arm9? backwards? #eval
 
 ## PAC + BTI gives us room to optimize BLAST
 
-- Loop headers are branches, branches safe due to BTI.
-- Loop jumps are safe due to PAC.
-- so, can remove logging from loop
-- removes column from the TABLE.
-- gives X% less entries on avg.
-- translates to better performance.
-- more in #eval
+Now that we have checks on branches and calls, we do not need to log each loop's iteration.
+Loop labels are protected by `BTI j` landing pads. They cannot be jumped to arbitrarily.
+And as for the jumps: `B`, `B.cond`, `BL` have labels, and are direct branches protected 
+against code modification.
+While `BR` and `BLR` use registers, and would not be used for loop control, 
+they still cannot jump arbitrarily as they would be preceded by pointer authentication.
+Similarly, funtion returns aren't required to target landing pads, and may target loop labels, 
+but due to PAC, all returns would be authenticated first.
 
-## Log Levels for control over Report Granularity
+Due to this, we can skip logging each loop iteration which would result in less 
+log entries, and subsequently less number of domain switches. The amount of logging 
+decreased is equal to [TABLE's loop headers column. This comes out to be
+equal to X% of BLAST's entries. The performance benifits are discussed in #eval.
+]{highlight="pink"}
 
-- what if we need fine grained reports?
-- what if we need performance at cost of granularity?
-- add log levels: with list
-- inter-procedure, intra-procedure, violations etc.
-- details for each level
-- set at compile time (limitation)
-- this is coz instrumentation is static.
+## Log Levels for control over report granularity
+
+Now, what if we need fine-grained CFlog reports with each log iteration, etc?
+Or what if we need more performance out of extended BLAST at the cost of CFlog granularity?
+
+We can add log levels to BLAST then. These are:
+
+- *Violation*: Coarse-grained. Only PAC/BTI faults are logged and handled.
+- *Inter-procedure*: Extended BLAST. Loop events aren't logged.
+- *Intra-procedure*: Fine-grained. Original BLAST. Loop events are logged at cost of performance.
+
+One thing to note here is that, BLAST instrumentation is added statically to the binary.
+This means the log levels are set at compile time, and cannot be changed at runtime.

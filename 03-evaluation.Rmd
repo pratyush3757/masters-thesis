@@ -13,6 +13,13 @@ documentclass: book
 
 ## Qualitative Security Analysis
 
+For our case, an attacker either controls the Prv or is a malicious Prv that changes
+the control flow of the program, while trying to keep the CFlog intact 
+or succeeds in completing malicious operations before Vrf gets the report.
+We can show that our extensions to BLAST add some integrity guarantees and 
+make this harder to do. Some of these guarantees are inherited from BLAST, and
+as described in [#implementation], we add on top of them instead of losing any.
+
 - Reliable delivery can be added on top
 TA can be configured to send continuout reports, and CFI fault handlers to kill + report.
 

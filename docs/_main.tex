@@ -1400,12 +1400,6 @@ Before going forward, we should list out some of our assumptions:
 
 \section{How to add Integrity guarantees?}\label{how-to-add-integrity-guarantees}
 
-\begin{itemize}
-\tightlist
-\item
-  code attacks + diag (optional)
-\end{itemize}
-
 As discussed in \hyperref[cfi]{CFI}, when talking about code reuse attacks, they can be further divided into
 Control flow hijacking (control data) and Data only (non-control data) attacks.
 We will talk about preventing control flow hijacking attacks first.
@@ -1423,27 +1417,66 @@ Use of \texttt{RET} instructions to chain gadgets to run arbitrary code would be
 as all returns would be preceded by an address check. Failing which would generate
 a hardware level exception.
 
-\begin{itemize}
-\item
-  cfa would detect \ldots{}
-  As for data only attacks, \sethlcolor{pink}\hl{CFA part would handle it. how? repeat this ans in \#qual eval}\sethlcolor{correctioncolor}
-\item
-  mte added optionally
-\end{itemize}
+\sethlcolor{pink}\hl{cfa would detect \ldots{}\\
+As for data only attacks, CFA part would handle it. how? repeat this ans in \#qual eval}\sethlcolor{correctioncolor}
 
-Now if we don't need backwards compatibility given by PAC and BTI in the form of
-NOP-space instructions, we can have some more features provided by them.
+We can also optionally enable Memory Tagging Extension (MTE), or memory coloring,
+an Armv8.5-A extension {[}\citeproc{ref-arm-pacbti}{5}{]}. It enables detection of memory safety violations like use after free
+and buffer overflows by assigning tags to memory regions. Any data access would
+require a tag check in the address. Checking and Violations can be handled both
+synchronously and asynchronously depending on performance needs.
+As the tags, like PAC, use upper bits of the address, PAC would have fewer bits available.
+
+But, MTE support for processors and Kernel is in early stage and is actively being worked upon.{[}\citeproc{ref-mte-kern-patch}{26}{]}
+Therefore, we will skip this feature for now and it can be used in the future when platforms
+have better support for it.
+
+We have some more instructions provided by the PAC and BTI feature flags,
+like \texttt{BLRAA} - Authenticate and branch, or \texttt{RETAA} - Authenticate and return.
+But they are not in the NOP-space. So for the sake of backwards compatibility,
+we choose to not use them for now.
+
+\subsubsection{But, do PAC and BTI help in limiting the number of gadgets?}\label{but-do-pac-and-bti-help-in-limiting-the-number-of-gadgets}
+
+According to ARM's testing, when these features were enabled for GLIBC, the number
+of available gadgets was reduced by 97.65\%. This can be seen in figure \ref{fig:pac-bti-gadgets}.
+Similar results were also seen for CFA+{[}\citeproc{ref-cfaplus}{1}{]}.
+
+\begin{figure}
+
+{\centering \includegraphics[width=1\linewidth]{./imgs/placeholder-pac-bti-gadgets} 
+
+}
+
+\caption{ROP and JOP gadgets in GLIBC}\label{fig:pac-bti-gadgets}
+\end{figure}
+
+\subsubsection{What about the binary size overhead then?}\label{what-about-the-binary-size-overhead-then}
+
+Binary size overhead for these, when checked for GLIBC by ARM, was 2.9\% for both
+when considering backwards compatibility. If compiled for Armv8.3-A and later,
+it drops to 1.61\% {[}\citeproc{ref-arm-pacbti}{5}{]}.
+This overhead is less significant when compared to BLAST instrumentation, which
+came to 64\% without inlining {[}\citeproc{ref-blast}{25}{]}.
+
+\sethlcolor{pink}\hl{We will discuss this further in \#eval after we implement extended BLAST.}\sethlcolor{correctioncolor}
+
+\subsubsection{What is our target compatibility?}\label{what-is-our-target-compatibility}
+
+As mentioned previously, PAC and BTI can be backwards compatible with ARMv8-A processors
+that do not support them, but will just be treated as \texttt{NOP} instructions.
+The same binary would run on Armv8.5-A processors with PAC + BTI guarantees, and
+Armv8.3-A with BTI turned off.
+\sethlcolor{pink}\hl{We also should keep in mind that PAC support is only enabled if the OS and the
+shared libraries are also PAC enabled.}\sethlcolor{correctioncolor}
+{[}?? VERIFY{]}
+
+\subsubsection{What happens to BLAST's portability to other platforms?}\label{what-happens-to-blasts-portability-to-other-platforms}
+
+\sethlcolor{pink}\hl{Edit/Add here}\sethlcolor{correctioncolor}
 
 \begin{itemize}
 \tightlist
-\item
-  optimizations if compatibility not needed
-\item
-  do they help in limiting gadgets?
-  \sethlcolor{pink}\hl{arm gadgets pac+bti.jpg}\sethlcolor{correctioncolor}
-\item
-  what about size overhead?
-  this is on top of blast.
 \item
   what is our target compatibility then?
   ARM8? arm9? backwards? \#eval
@@ -1455,49 +1488,52 @@ NOP-space instructions, we can have some more features provided by them.
 
 \section{PAC + BTI gives us room to optimize BLAST}\label{pac-bti-gives-us-room-to-optimize-blast}
 
+Now that we have checks on branches and calls, we do not need to log each loop's iteration.
+Loop labels are protected by \texttt{BTI\ j} landing pads. They cannot be jumped to arbitrarily.
+And as for the jumps: \texttt{B}, \texttt{B.cond}, \texttt{BL} have labels, and are direct branches protected
+against code modification.
+While \texttt{BR} and \texttt{BLR} use registers, and would not be used for loop control,
+they still cannot jump arbitrarily as they would be preceded by pointer authentication.
+Similarly, funtion returns aren't required to target landing pads, and may target loop labels,
+but due to PAC, all returns would be authenticated first.
+
+Due to this, we can skip logging each loop iteration which would result in less
+log entries, and subsequently less number of domain switches. The amount of logging
+decreased is equal to \sethlcolor{pink}\hl{TABLE's loop headers column. This comes out to be
+equal to X\% of BLAST's entries. The performance benifits are discussed in \#eval.}\sethlcolor{correctioncolor}
+
+\section{Log Levels for control over report granularity}\label{log-levels-for-control-over-report-granularity}
+
+Now, what if we need fine-grained CFlog reports with each log iteration, etc?
+Or what if we need more performance out of extended BLAST at the cost of CFlog granularity?
+
+We can add log levels to BLAST then. These are:
+
 \begin{itemize}
 \tightlist
 \item
-  Loop headers are branches, branches safe due to BTI.
+  \emph{Violation}: Coarse-grained. Only PAC/BTI faults are logged and handled.
 \item
-  Loop jumps are safe due to PAC.
+  \emph{Inter-procedure}: Extended BLAST. Loop events aren't logged.
 \item
-  so, can remove logging from loop
-\item
-  removes column from the TABLE.
-\item
-  gives X\% less entries on avg.
-\item
-  translates to better performance.
-\item
-  more in \#eval
+  \emph{Intra-procedure}: Fine-grained. Original BLAST. Loop events are logged at cost of performance.
 \end{itemize}
 
-\section{Log Levels for control over Report Granularity}\label{log-levels-for-control-over-report-granularity}
-
-\begin{itemize}
-\tightlist
-\item
-  what if we need fine grained reports?
-\item
-  what if we need performance at cost of granularity?
-\item
-  add log levels: with list
-\item
-  inter-procedure, intra-procedure, violations etc.
-\item
-  details for each level
-\item
-  set at compile time (limitation)
-\item
-  this is coz instrumentation is static.
-\end{itemize}
+One thing to note here is that, BLAST instrumentation is added statically to the binary.
+This means the log levels are set at compile time, and cannot be changed at runtime.
 
 \chapter{Evaluation}\label{evaluation}
 
 \minitoc 
 
 \section{Qualitative Security Analysis}\label{qualitative-security-analysis}
+
+For our case, an attacker either controls the Prv or is a malicious Prv that changes
+the control flow of the program, while trying to keep the CFlog intact
+or succeeds in completing malicious operations before Vrf gets the report.
+We can show that our extensions to BLAST add some integrity guarantees and
+make this harder to do. Some of these guarantees are inherited from BLAST, and
+as described in {[}\#implementation{]}, we add on top of them instead of losing any.
 
 \begin{itemize}
 \tightlist
@@ -1664,6 +1700,10 @@ This first appendix includes an R chunk that was hidden in the document (using \
 \bibitem[\citeproctext]{ref-blast}
 \CSLLeftMargin{{[}25{]} }%
 \CSLRightInline{Nikita Yadav and Vinod Ganapathy. 2023. Whole-program control-flow path attestation. In \emph{Proceedings of the 2023 ACM SIGSAC conference on computer and communications security}, 2023. 2680--2694.}
+
+\bibitem[\citeproctext]{ref-mte-kern-patch}
+\CSLLeftMargin{{[}26{]} }%
+\CSLRightInline{Yeoreum Yun. 2025. Kernel patch - support for FEAT\_MTE\_STORE\_ONLY feature. Retrieved from \url{https://lwn.net/ml/all/20250507154654.1937588-1-yeoreum.yun@arm.com/}}
 
 \end{CSLReferences}
 
