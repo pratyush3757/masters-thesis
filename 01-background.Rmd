@@ -98,7 +98,7 @@ with particular software stack [?? CITEME], or that it executed certain operatio
 
 The work done on CFA has been parallel to CFI, but with an aligned objective [@sok].
 We will focus on path attestation, and whole program path in particular. 
-The reason for that is explained later in [CFA techniques subsection](#cfatechniques).
+The reason for that is explained later in CFA - Techniques subsection.
 
 #### General Overview of the process
 ```{r cfa-workflow, fig.cap="Typical CFA Interaction", out.width='50%', fig.align='center', fig.pos='H'}
@@ -190,15 +190,14 @@ Prior work has also shown that a Vrf can miss attacks that are directed against
 a program when paths in only some parts of it are attested [?? CITEME].
 Therefore, it's better for Vrf to be able to attest the entire execution of a program.
 
-[Edit/Add to this part]{highlight="pink"}
+BLAST [@blast] was then proposed, which overcame the limitations of CFLAT and OAT while
+also adding whole program control flow attestation capabilities. It's discussed
+in detail later on in [Primary Works - BLAST subsection](#blast).
 
-- History
-- CFLAT with technical details + limitations
-- OAT with improvements + limitations
-- Whole programs not focused.
-- Mention BLAST, just brief explaination. Link to its section.
-- Also mention constant reporting
-- ...
+Also, most CFA techniques do not guarantee that the report will be recieved by Vrf.
+The Vrf may not trust the output recieved by it unless CFlog is attached to it,
+runtime auditing [?? CITEME, Sok 41,42] aims to bridge that gap and reliably deliver
+CFlog even when Prv turns malicious and tries to not follow the protocol.
 
 ## ARM Specifics
 Now that we know [what CFI and CFA are]{highlight="pink"}, we can take a look at platform specific solutions.
@@ -277,6 +276,8 @@ Holds the address of the next instruction to be executed.
 Holds the various status and control flags for the processor. 
 They include Execution State, Interrupt Mask Bits, Processor Mode, Condition Flags, 
 
+---
+
 *Sidenote:* XNU (Apple iOS and MacOS) ABI's conventions differ from the aforementioned one.
 Although private and undocumented, it can be seen from the source [@apple-oss] that
 the main differences (as of 02 May 2025) are:[@so-xnu-abi]
@@ -294,6 +295,7 @@ the error code.
 UNIX ones are non-negative as usual, ranging between `0` and `557`. 
 Mach ones are negative with range between `-10` and `-100`.
 
+---
 
 #### Calling (and Branching) Conventions
 Now that we know the details about the registers, their usage and their volatility for a caller,
@@ -362,7 +364,7 @@ baz:
 
 > `foo` and `bar` are non-leaf functions, whereas `baz` is a leaf function.
 
-### Pointer Authentication Code (PAC)
+### Pointer Authentication Code (PAC){#pac-bg}
 Pointer Authentication was added in ARMv8.3-A under the mandatory feature `FEAT_PAuth`.[@arm-feat-names]
 To understand PAC, we must first understand why and what does it aim to fix.
 
@@ -382,7 +384,7 @@ ret
 The attackers can then chain these gadgets together to form and execute their malicious code.
 Any library that is in the address space of the process is a potential source of gadgets.
 For example, GLIBC on ARM64, has almost 16,000 usable gadgets.[@riscyrop]
-This process is described in figure \@ref(fig:rop-diag).
+The ROP exploit process is described in figure \@ref(fig:rop-diag).
 
 ```{r rop-diag, fig.cap="Using ROP Gadgets", out.width='100%', fig.align='center'}
 knitr::include_graphics("./imgs/placeholder-rop.png")
@@ -463,6 +465,8 @@ as `SP` may be different on future calls.
 The attacker would need to get every pointer correct in the chain, otherwise an 
 exception would be raised.
 
+[Results discussed in chapter 3]{highlight="pink"}
+
 #### But what do these instructions mean?
 
 - `AUTI` prefix is an Authenticate instruction.
@@ -473,11 +477,15 @@ exception would be raised.
 - `Z` suffix means address is in `x30`, modifier is `0`.
 - `XPACLRI` is used to strip PAC from address in `x30`.
 
+---
+
 *Sidenote:*
 From ARMv9.4-A, under feature `FEAT_PAuth_LR`, `PACIxSPPC` and `AUTIxSPPC` 
 instructions were added to use `SP + PC` as the modifier to sign `LR`.
 It gives better security by tying the caller and callee to the address, 
 and uniquely associating PAC with that particular instance of function usage. 
+
+---
 
 At the end, when enabled in the codebase, PAC looks like this:
 [Add final example of PAC]{highlight="pink"}
@@ -486,7 +494,7 @@ At the end, when enabled in the codebase, PAC looks like this:
 // generated asm
 ```
 
-### Branch Target Identification (BTI)
+### Branch Target Identification (BTI){#bti-bg}
 Branch Target Identification was added in ARMv8.5-A under the mandatory feature `FEAT_BTI`.[@arm-feat-names]
 Let us first understand where PAC was still inadequate, and what could be improved by using BTI.
 
@@ -500,6 +508,8 @@ sequence instead of `RET`. So JOP gadgets would end with `BR`, `BLR` or similar 
 `BR` and similar instructions use the register to determine the jump point, which
 makes it hard to determine the target statically, or that the target would be valid.
 This makes it easy for the attacker to use them to execute their JOP chain.
+
+[fig: JOP.png]{highlight="pink"}
 
 #### Solution?
 If it is hard to statically secure the jump points, how about the landing points?
@@ -529,6 +539,8 @@ Please refer the Sipearl Whitepaper[@sipearl], or Arm Documentation for PAC and 
 #### NOP-space
 Instructions added under BTI are also in NOP-space, so that all applications and 
 libraries that use it would be backwards compatible with old processors.
+
+[Results discussed in chapter 3]{highlight="pink"}
 
 [Add BTI example here]{highlight="pink"}
 
@@ -583,7 +595,7 @@ knitr::include_graphics("./imgs/placeholder-optee.png")
 ## Primary Works
 
 ### BLAST
-As mentioned in [CFA techniques](#cfatechniques), attestation has rarely targeted whole programs.
+As mentioned in [CFA - Techniques](#cfatechniques), attestation has rarely targeted whole programs.
 And their approaches did not scale when applied to whole program paths, mainly 
 due to the sheer number of domain transitions between REE/TEE.[@blast]
 BLAST[@blast] was developed in 2023 with whole program paths in mind.
@@ -671,8 +683,10 @@ to the program. Single core settings had an average runtime overhead of 175%
 as compared to 67% of multi-core execution.[@blast]
 
 Reserving 2 registers may cause compatibility issues, especially with programs 
-that rely on inline assembly. But as shown by CFA+[@cfaplus], 
-[it is not an issue??]{highlight="pink"}
+that rely on inline assembly. In which case, BLAST would not compile.
+
+Also, the binary size overhead can be from 64% upto 167% with function inlining.
+This would not be reasonable in certain applications or scenarios like lightweight embedded devices.
 
 ### CFA+
 

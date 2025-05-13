@@ -556,7 +556,7 @@ with particular software stack {[}?? CITEME{]}, or that it executed certain oper
 
 The work done on CFA has been parallel to CFI, but with an aligned objective {[}\citeproc{ref-sok}{2}{]}.
 We will focus on path attestation, and whole program path in particular.
-The reason for that is explained later in \hyperref[cfatechniques]{CFA techniques subsection}.
+The reason for that is explained later in CFA - Techniques subsection.
 
 \subsubsection{General Overview of the process}\label{general-overview-of-the-process}
 
@@ -655,25 +655,14 @@ Prior work has also shown that a Vrf can miss attacks that are directed against
 a program when paths in only some parts of it are attested {[}?? CITEME{]}.
 Therefore, it's better for Vrf to be able to attest the entire execution of a program.
 
-\sethlcolor{pink}\hl{Edit/Add to this part}\sethlcolor{correctioncolor}
+BLAST {[}\citeproc{ref-blast}{25}{]} was then proposed, which overcame the limitations of CFLAT and OAT while
+also adding whole program control flow attestation capabilities. It's discussed
+in detail later on in \hyperref[blast]{Primary Works - BLAST subsection}.
 
-\begin{itemize}
-\tightlist
-\item
-  History
-\item
-  CFLAT with technical details + limitations
-\item
-  OAT with improvements + limitations
-\item
-  Whole programs not focused.
-\item
-  Mention BLAST, just brief explaination. Link to its section.
-\item
-  Also mention constant reporting
-\item
-  \ldots{}
-\end{itemize}
+Also, most CFA techniques do not guarantee that the report will be recieved by Vrf.
+The Vrf may not trust the output recieved by it unless CFlog is attached to it,
+runtime auditing {[}?? CITEME, Sok 41,42{]} aims to bridge that gap and reliably deliver
+CFlog even when Prv turns malicious and tries to not follow the protocol.
 
 \section{ARM Specifics}\label{arm-specifics}
 
@@ -779,6 +768,8 @@ The registers and their usage are as follows:{[}\citeproc{ref-armasm-user-guide}
   They include Execution State, Interrupt Mask Bits, Processor Mode, Condition Flags,
 \end{itemize}
 
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
 \emph{Sidenote:} XNU (Apple iOS and MacOS) ABI's conventions differ from the aforementioned one.
 Although private and undocumented, it can be seen from the source {[}\citeproc{ref-apple-oss}{14}{]} that
 the main differences (as of 02 May 2025) are:{[}\citeproc{ref-so-xnu-abi}{23}{]}
@@ -805,6 +796,8 @@ the main differences (as of 02 May 2025) are:{[}\citeproc{ref-so-xnu-abi}{23}{]}
   UNIX ones are non-negative as usual, ranging between \texttt{0} and \texttt{557}.
   Mach ones are negative with range between \texttt{-10} and \texttt{-100}.
 \end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
 
 \subsubsection{Calling (and Branching) Conventions}\label{calling-and-branching-conventions}
 
@@ -891,7 +884,7 @@ and restore it before return. It looks like this:
 \texttt{foo} and \texttt{bar} are non-leaf functions, whereas \texttt{baz} is a leaf function.
 \end{quote}
 
-\subsection{Pointer Authentication Code (PAC)}\label{pointer-authentication-code-pac}
+\subsection{Pointer Authentication Code (PAC)}\label{pac-bg}
 
 Pointer Authentication was added in ARMv8.3-A under the mandatory feature \texttt{FEAT\_PAuth}.{[}\citeproc{ref-arm-feat-names}{9}{]}
 To understand PAC, we must first understand why and what does it aim to fix.
@@ -916,7 +909,7 @@ fragments of code, usually ending with a return. For example:
 The attackers can then chain these gadgets together to form and execute their malicious code.
 Any library that is in the address space of the process is a potential source of gadgets.
 For example, GLIBC on ARM64, has almost 16,000 usable gadgets.{[}\citeproc{ref-riscyrop}{12}{]}
-This process is described in figure \ref{fig:rop-diag}.
+The ROP exploit process is described in figure \ref{fig:rop-diag}.
 
 \begin{figure}
 
@@ -1024,6 +1017,8 @@ as \texttt{SP} may be different on future calls.
 The attacker would need to get every pointer correct in the chain, otherwise an
 exception would be raised.
 
+\sethlcolor{pink}\hl{Results discussed in chapter 3}\sethlcolor{correctioncolor}
+
 \subsubsection{But what do these instructions mean?}\label{but-what-do-these-instructions-mean}
 
 \begin{itemize}
@@ -1044,11 +1039,15 @@ exception would be raised.
   \texttt{XPACLRI} is used to strip PAC from address in \texttt{x30}.
 \end{itemize}
 
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
 \emph{Sidenote:}
 From ARMv9.4-A, under feature \texttt{FEAT\_PAuth\_LR}, \texttt{PACIxSPPC} and \texttt{AUTIxSPPC}
 instructions were added to use \texttt{SP\ +\ PC} as the modifier to sign \texttt{LR}.
 It gives better security by tying the caller and callee to the address,
 and uniquely associating PAC with that particular instance of function usage.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
 
 At the end, when enabled in the codebase, PAC looks like this:
 \sethlcolor{pink}\hl{Add final example of PAC}\sethlcolor{correctioncolor}
@@ -1060,7 +1059,7 @@ At the end, when enabled in the codebase, PAC looks like this:
 \end{Highlighting}
 \end{Shaded}
 
-\subsection{Branch Target Identification (BTI)}\label{branch-target-identification-bti}
+\subsection{Branch Target Identification (BTI)}\label{bti-bg}
 
 Branch Target Identification was added in ARMv8.5-A under the mandatory feature \texttt{FEAT\_BTI}.{[}\citeproc{ref-arm-feat-names}{9}{]}
 Let us first understand where PAC was still inadequate, and what could be improved by using BTI.
@@ -1076,6 +1075,8 @@ sequence instead of \texttt{RET}. So JOP gadgets would end with \texttt{BR}, \te
 \texttt{BR} and similar instructions use the register to determine the jump point, which
 makes it hard to determine the target statically, or that the target would be valid.
 This makes it easy for the attacker to use them to execute their JOP chain.
+
+\sethlcolor{pink}\hl{fig: JOP.png}\sethlcolor{correctioncolor}
 
 \subsubsection{Solution?}\label{solution-1}
 
@@ -1111,6 +1112,8 @@ Please refer the Sipearl Whitepaper{[}\citeproc{ref-sipearl}{24}{]}, or Arm Docu
 
 Instructions added under BTI are also in NOP-space, so that all applications and
 libraries that use it would be backwards compatible with old processors.
+
+\sethlcolor{pink}\hl{Results discussed in chapter 3}\sethlcolor{correctioncolor}
 
 \sethlcolor{pink}\hl{Add BTI example here}\sethlcolor{correctioncolor}
 
@@ -1194,7 +1197,7 @@ is then responsible for the communication with the OP-TEE kernel.
 
 \subsection{BLAST}\label{blast}
 
-As mentioned in \hyperref[cfatechniques]{CFA techniques}, attestation has rarely targeted whole programs.
+As mentioned in \hyperref[cfatechniques]{CFA - Techniques}, attestation has rarely targeted whole programs.
 And their approaches did not scale when applied to whole program paths, mainly
 due to the sheer number of domain transitions between REE/TEE.{[}\citeproc{ref-blast}{25}{]}
 BLAST{[}\citeproc{ref-blast}{25}{]} was developed in 2023 with whole program paths in mind.
@@ -1310,8 +1313,10 @@ to the program. Single core settings had an average runtime overhead of 175\%
 as compared to 67\% of multi-core execution.{[}\citeproc{ref-blast}{25}{]}
 
 Reserving 2 registers may cause compatibility issues, especially with programs
-that rely on inline assembly. But as shown by CFA+{[}\citeproc{ref-cfaplus}{1}{]},
-\sethlcolor{pink}\hl{it is not an issue??}\sethlcolor{correctioncolor}
+that rely on inline assembly. In which case, BLAST would not compile.
+
+Also, the binary size overhead can be from 64\% upto 167\% with function inlining.
+This would not be reasonable in certain applications or scenarios like lightweight embedded devices.
 
 \subsection{CFA+}\label{cfa-1}
 
@@ -1366,20 +1371,22 @@ matter if we can detect if afterwards as the person's safety has already been co
 Our goal in this case is to prevent these kinds of scenarios.
 
 People have been working on CFI and CFA parallelly as two solutions to similar
-problems, but they have not thought about applying both of these together.
+problems, but they have not thought about applying both of these together.{[}\citeproc{ref-cfaplus}{1}, \citeproc{ref-sok}{2}{]}
 When applied together, these techniques sometimes complement each other and cover
 each other's disadvantages. For example, adding integrity to some parts of the
-code would remove the need for logging those parts, decreasing the attestation
-overhead, which is a common problem in the CFA literature.
+code would remove the need for logging those parts, decreasing the runtime overhead
+due to attestation, which is a common problem in the CFA literature.{[}\citeproc{ref-sok}{2}{]}
 
-\sethlcolor{pink}\hl{Also write about the constant monitor for input idea}\sethlcolor{correctioncolor}
+\sethlcolor{pink}\hl{CFA+ is there, but the limitations are listed, we need better solution.}\sethlcolor{correctioncolor}
+
+\sethlcolor{pink}\hl{Also write about the constant monitor for input idea. BLAST is experiment in that direction}\sethlcolor{correctioncolor}
 
 Before going forward, we should list out some of our assumptions:
 
 \begin{itemize}
 \tightlist
 \item
-  Write XOR Execute is enabled on pages.
+  Write XOR Execute is enabled on pages. Code injection/modification in not possible.
 \item
   Hardware is implicitly trusted.
 \item
@@ -1387,19 +1394,117 @@ Before going forward, we should list out some of our assumptions:
 \item
   OS is not trusted if and only if \sethlcolor{pink}\hl{page management?}\sethlcolor{correctioncolor} is handled
   by the secure monitor.
+\item
+  \sethlcolor{pink}\hl{\ldots{}}\sethlcolor{correctioncolor}
 \end{itemize}
 
-\section{What can be done to add Integrity guarantees?}\label{what-can-be-done-to-add-integrity-guarantees}
+\section{How to add Integrity guarantees?}\label{how-to-add-integrity-guarantees}
+
+\begin{itemize}
+\tightlist
+\item
+  code attacks + diag (optional)
+\end{itemize}
+
+As discussed in \hyperref[cfi]{CFI}, when talking about code reuse attacks, they can be further divided into
+Control flow hijacking (control data) and Data only (non-control data) attacks.
+We will talk about preventing control flow hijacking attacks first.
+The two main categories of control flow hijacking attacks are: ROP and JOP.
+We have talked about them in ARM Specifics - \hyperref[pac-bg]{PAC} and \hyperref[bti-bg]{BTI} respectively.
+
+Adding BTI to a binary would prevent JOP attacks disabling an attacker from changing
+the control flow of the program and corrupting the forward edges of the CFG.
+Use of \texttt{BR}, \texttt{BLR} and similar instructions to pivot to arbitrary code would generate hardware
+level exceptions, which could then be logged and handled appropriately.
+
+Similarly, adding PAC to a binary would prevent ROP attacks, disabling corruption
+of backward egdes of the CFG.
+Use of \texttt{RET} instructions to chain gadgets to run arbitrary code would become hard
+as all returns would be preceded by an address check. Failing which would generate
+a hardware level exception.
+
+\begin{itemize}
+\item
+  cfa would detect \ldots{}
+  As for data only attacks, \sethlcolor{pink}\hl{CFA part would handle it. how? repeat this ans in \#qual eval}\sethlcolor{correctioncolor}
+\item
+  mte added optionally
+\end{itemize}
+
+Now if we don't need backwards compatibility given by PAC and BTI in the form of
+NOP-space instructions, we can have some more features provided by them.
+
+\begin{itemize}
+\tightlist
+\item
+  optimizations if compatibility not needed
+\item
+  do they help in limiting gadgets?
+  \sethlcolor{pink}\hl{arm gadgets pac+bti.jpg}\sethlcolor{correctioncolor}
+\item
+  what about size overhead?
+  this is on top of blast.
+\item
+  what is our target compatibility then?
+  ARM8? arm9? backwards? \#eval
+\item
+  portability to other platforms? can be added to other CFA? \#eval
+\item
+  how does it all look at the end?
+\end{itemize}
 
 \section{PAC + BTI gives us room to optimize BLAST}\label{pac-bti-gives-us-room-to-optimize-blast}
 
+\begin{itemize}
+\tightlist
+\item
+  Loop headers are branches, branches safe due to BTI.
+\item
+  Loop jumps are safe due to PAC.
+\item
+  so, can remove logging from loop
+\item
+  removes column from the TABLE.
+\item
+  gives X\% less entries on avg.
+\item
+  translates to better performance.
+\item
+  more in \#eval
+\end{itemize}
+
 \section{Log Levels for control over Report Granularity}\label{log-levels-for-control-over-report-granularity}
+
+\begin{itemize}
+\tightlist
+\item
+  what if we need fine grained reports?
+\item
+  what if we need performance at cost of granularity?
+\item
+  add log levels: with list
+\item
+  inter-procedure, intra-procedure, violations etc.
+\item
+  details for each level
+\item
+  set at compile time (limitation)
+\item
+  this is coz instrumentation is static.
+\end{itemize}
 
 \chapter{Evaluation}\label{evaluation}
 
 \minitoc 
 
 \section{Qualitative Security Analysis}\label{qualitative-security-analysis}
+
+\begin{itemize}
+\tightlist
+\item
+  Reliable delivery can be added on top
+  TA can be configured to send continuout reports, and CFI fault handlers to kill + report.
+\end{itemize}
 
 \section{Performance}\label{performance}
 

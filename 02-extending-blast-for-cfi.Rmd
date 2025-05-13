@@ -17,37 +17,95 @@ documentclass: book
 
 ## Why?
 
-CFA mechanisms rely on the fact that a malicious actor would not want their attack 
-to be detected. And for this there attack must not leave any trace in the log that 
-would be visible to the verifier. But what if the attacker does not care about if 
-their attack is visible or not, if the damage is done? Code reuse attacks become 
+CFA mechanisms rely on the fact that a malicious actor would not want their attack
+to be detected. And for this there attack must not leave any trace in the log that
+would be visible to the verifier. But what if the attacker does not care about if
+their attack is visible or not, if the damage is done? Code reuse attacks become
 very easy in this case, as most CFA techniques aim to detect them, but not prevent them.
 
-Taking the example of the syringe pump, if an attacker has used ROP gadgets to 
-change the control flow of the pump to inject 10 ml instead of 1 ml, it doesn't 
+Taking the example of the syringe pump, if an attacker has used ROP gadgets to
+change the control flow of the pump to inject 10 ml instead of 1 ml, it doesn't
 matter if we can detect if afterwards as the person's safety has already been compromised.
 
 Our goal in this case is to prevent these kinds of scenarios.
 
-People have been working on CFI and CFA parallelly as two solutions to similar 
-problems, but they have not thought about applying both of these together. 
-When applied together, these techniques sometimes complement each other and cover 
-each other's disadvantages. For example, adding integrity to some parts of the 
-code would remove the need for logging those parts, decreasing the attestation 
-overhead, which is a common problem in the CFA literature. 
+People have been working on CFI and CFA parallelly as two solutions to similar
+problems, but they have not thought about applying both of these together.[@sok; @cfaplus]
+When applied together, these techniques sometimes complement each other and cover
+each other's disadvantages. For example, adding integrity to some parts of the
+code would remove the need for logging those parts, decreasing the runtime overhead
+due to attestation, which is a common problem in the CFA literature.[@sok]
 
-[Also write about the constant monitor for input idea]{highlight="pink"} 
+[CFA+ is there, but the limitations are listed, we need better solution.]{highlight="pink"}
+
+[Also write about the constant monitor for input idea. BLAST is experiment in that direction]{highlight="pink"}
 
 Before going forward, we should list out some of our assumptions:
 
-- Write XOR Execute is enabled on pages.
+- Write XOR Execute is enabled on pages. Code injection/modification in not possible.
 - Hardware is implicitly trusted.
 - Communication between Vrf and Prv is secure.
 - OS is not trusted if and only if [page management?]{highlight="pink"} is handled
 by the secure monitor.
+- [...]{highlight="pink"}
 
-## What can be done to add Integrity guarantees?
+## How to add Integrity guarantees?
+
+- code attacks + diag (optional)
+
+As discussed in [CFI](#cfi), when talking about code reuse attacks, they can be further divided into 
+Control flow hijacking (control data) and Data only (non-control data) attacks.
+We will talk about preventing control flow hijacking attacks first.
+The two main categories of control flow hijacking attacks are: ROP and JOP.
+We have talked about them in ARM Specifics - [PAC](#pac-bg) and [BTI](#bti-bg) respectively.
+
+Adding BTI to a binary would prevent JOP attacks disabling an attacker from changing
+the control flow of the program and corrupting the forward edges of the CFG.
+Use of `BR`, `BLR` and similar instructions to pivot to arbitrary code would generate hardware 
+level exceptions, which could then be logged and handled appropriately.
+
+Similarly, adding PAC to a binary would prevent ROP attacks, disabling corruption 
+of backward egdes of the CFG.
+Use of `RET` instructions to chain gadgets to run arbitrary code would become hard
+as all returns would be preceded by an address check. Failing which would generate
+a hardware level exception.
+
+- cfa would detect ...
+As for data only attacks, [CFA part would handle it. how? repeat this ans in #qual eval]{highlight="pink"}
+
+
+- mte added optionally
+
+Now if we don't need backwards compatibility given by PAC and BTI in the form of
+NOP-space instructions, we can have some more features provided by them.
+
+
+- optimizations if compatibility not needed
+- do they help in limiting gadgets?
+[arm gadgets pac+bti.jpg]{highlight="pink"}
+- what about size overhead?
+this is on top of blast.
+- what is our target compatibility then?
+ARM8? arm9? backwards? #eval
+- portability to other platforms? can be added to other CFA? #eval
+- how does it all look at the end?
 
 ## PAC + BTI gives us room to optimize BLAST
 
+- Loop headers are branches, branches safe due to BTI.
+- Loop jumps are safe due to PAC.
+- so, can remove logging from loop
+- removes column from the TABLE.
+- gives X% less entries on avg.
+- translates to better performance.
+- more in #eval
+
 ## Log Levels for control over Report Granularity
+
+- what if we need fine grained reports?
+- what if we need performance at cost of granularity?
+- add log levels: with list
+- inter-procedure, intra-procedure, violations etc.
+- details for each level
+- set at compile time (limitation)
+- this is coz instrumentation is static.

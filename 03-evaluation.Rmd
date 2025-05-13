@@ -13,4 +13,7 @@ documentclass: book
 
 ## Qualitative Security Analysis
 
+- Reliable delivery can be added on top
+TA can be configured to send continuout reports, and CFI fault handlers to kill + report.
+
 ## Performance
