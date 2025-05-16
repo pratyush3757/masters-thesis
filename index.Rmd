@@ -43,8 +43,8 @@ output:
 #####################
 title: Extending Whole Program CFA for Integrity
 author: Pratyush Choudhary
-college: Indian Institute of Gandhinagar
-#university: Indian Institute of Gandhinagar
+college: Indian Institute of Technology Gandhinagar
+#university: Indian Institute of Technology Gandhinagar
 university-logo: templates/iitgnlogo.png
 university-logo-width: 5cm
 submitted-text: A thesis submitted for the degree of
