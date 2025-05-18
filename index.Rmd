@@ -47,7 +47,8 @@ college: Indian Institute of Technology Gandhinagar
 #university: Indian Institute of Technology Gandhinagar
 university-logo: templates/iitgnlogo.png
 university-logo-width: 5cm
-submitted-text: A thesis submitted for the degree of
+submitted-text: >
+  A thesis submitted in partial fulfillment of the requirements for the degree of
 degree: Master of Technology
 degreedate: May 2025
 #dedication: For Yihui Xie
