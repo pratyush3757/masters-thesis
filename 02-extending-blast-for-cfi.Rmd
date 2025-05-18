@@ -45,17 +45,18 @@ Before going forward, we should list out some of our assumptions:
 - Write XOR Execute is enabled on pages. Code injection/modification in not possible.
 - Hardware is implicitly trusted.
 - Communication between Vrf and Prv is secure.
-- OS is not trusted if and only if [page management?]{highlight="pink"} is handled
+- OS is not trusted if and only if page management and interrupt handling is mediated
 by the secure monitor.
+- Libraries are instrumented and statically linked to the binary.
 - [...]{highlight="pink"}
 
-## How to add Integrity guarantees?
+## How to add Integrity guarantees?{#adding-integrity}
 
-As discussed in [CFI](#cfi), when talking about code reuse attacks, they can be further divided into 
+As discussed in [1.1.1 - CFI](#cfi), when talking about code reuse attacks, they can be further divided into 
 Control flow hijacking (control data) and Data only (non-control data) attacks.
 We will talk about preventing control flow hijacking attacks first.
 The two main categories of control flow hijacking attacks are: ROP and JOP.
-We have talked about them in ARM Specifics - [PAC](#pac-bg) and [BTI](#bti-bg) respectively.
+We have talked about them in ARM Specifics [1.2.2 - PAC](#pac-bg) and [1.2.3 - BTI](#bti-bg) respectively.
 
 Adding BTI to a binary would prevent JOP attacks disabling an attacker from changing
 the control flow of the program and corrupting the forward edges of the CFG.
@@ -113,24 +114,13 @@ came to 64% without inlining [@blast].
 
 As mentioned previously, PAC and BTI can be backwards compatible with ARMv8-A processors
 that do not support them, but will just be treated as `NOP` instructions.
-The same binary would run on Armv8.5-A processors with PAC + BTI guarantees, and 
-Armv8.3-A with BTI turned off.
-[
-We also should keep in mind that PAC support is only enabled if the OS and the 
-shared libraries are also PAC enabled.
-]{highlight="pink"}
-[?? VERIFY]
+The same binary would run on ARMv8.5-A processors with PAC + BTI guarantees, and 
+ARMv8.3-A with BTI turned off.
+We also should keep in mind that PAC support is only enabled if the linked libraries
+are also PAC enabled.
+Compatibility is discussed in further detail in section [3.2 Compatibility](#compatibility).
 
-#### What happens to BLAST's portability to other platforms?
-
-[Edit/Add here]{highlight="pink"}
-
-- what is our target compatibility then?
-ARM8? arm9? backwards? #eval
-- portability to other platforms? can be added to other CFA? #eval
-- how does it all look at the end?
-
-## PAC + BTI gives us room to optimize BLAST
+## PAC + BTI gives us room to optimize BLAST{#optimizing-blast}
 
 Now that we have checks on branches and calls, we do not need to log each loop's iteration.
 Loop labels are protected by `BTI j` landing pads. They cannot be jumped to arbitrarily.

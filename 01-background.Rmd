@@ -192,7 +192,7 @@ Therefore, it's better for Vrf to be able to attest the entire execution of a pr
 
 BLAST [@blast] was then proposed, which overcame the limitations of CFLAT and OAT while
 also adding whole program control flow attestation capabilities. It's discussed
-in detail later on in [Primary Works - BLAST subsection](#blast).
+in detail later on in Primary Works - [1.3.1 BLAST](#blast) subsection.
 
 Also, most CFA techniques do not guarantee that the report will be recieved by Vrf.
 The Vrf may not trust the output recieved by it unless CFlog is attached to it,
@@ -595,7 +595,7 @@ knitr::include_graphics("./imgs/placeholder-optee.png")
 ## Primary Works
 
 ### BLAST
-As mentioned in [CFA - Techniques](#cfatechniques), attestation has rarely targeted whole programs.
+As mentioned in [1.1.2 CFA - Techniques](#cfatechniques), attestation has rarely targeted whole programs.
 And their approaches did not scale when applied to whole program paths, mainly 
 due to the sheer number of domain transitions between REE/TEE.[@blast]
 BLAST[@blast] was developed in 2023 with whole program paths in mind.

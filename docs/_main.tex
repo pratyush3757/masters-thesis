@@ -315,7 +315,7 @@
 %
 \def\crest{{\includegraphics[width=5cm]{templates/iitgnlogo.png}}}
 \renewcommand{\university}{}
-\renewcommand{\submittedtext}{A thesis submitted for the degree of}
+\renewcommand{\submittedtext}{A thesis submitted in partial fulfillment of the requirements for the degree of}
 \renewcommand{\thesistitlesize}{\fontsize{22pt}{28pt}\selectfont}
 \renewcommand{\gapbeforecrest}{25mm}
 \renewcommand{\gapaftercrest}{25mm
@@ -481,7 +481,7 @@ There are a few factors that may influence the program to not behave correctly:{
 
 For factors 1-2, there are techniques like source code auditing, testing,
 fuzzing, static and dynamic program analysis, and formal verification that try to minimize the software/hardware bugs.
-{[}\citeproc{ref-godefroid2012sage}{13}, \citeproc{ref-kern1999formal}{15}, \citeproc{ref-luk2005dynamic}{18}--\citeproc{ref-quinlan2009source}{21}{]}
+{[}\citeproc{ref-godefroid2012sage}{13}, \citeproc{ref-kern1999formal}{16}, \citeproc{ref-luk2005dynamic}{19}--\citeproc{ref-quinlan2009source}{22}{]}
 
 For factor 3, there are various types of results that are possible ranging from
 Denial of Service to Information Leak.
@@ -490,7 +490,7 @@ and for that, the techniques come under the term Control Flow Integrity (CFI).{[
 
 But what if the adversary is the device's environment like factor 4?
 Or what do we do about the fact that we still cannot guarantee that the program is secure?
-As stated by Bruce Schneier: Security is a process, not a product.{[}\citeproc{ref-bruceessay}{22}{]}
+As stated by Bruce Schneier: Security is a process, not a product.{[}\citeproc{ref-bruceessay}{23}{]}
 No system is fully secure, and security flaws are inevitable.
 We need to at-least be able to prove in some way that the program behaved as intended.
 
@@ -635,7 +635,7 @@ are shown in figure \ref{fig:cflat-oat-instruments}.
 CFLAT and OAT have logging events for each Conditional Branch, Indirect function call, and Function exit.
 Additionally, CFLAT also have events for Unconditional Branches and Direct function calls.
 All of these events has a domain transition to TEE for logging. Which, when large codebases
-are taken in account, can become a performace bottleneck due to the sheer number of them {[}\citeproc{ref-blast}{25}{]}.
+are taken in account, can become a performace bottleneck due to the sheer number of them {[}\citeproc{ref-blast}{26}{]}.
 
 \sethlcolor{pink}\hl{?? TABLE}\sethlcolor{correctioncolor} describes the number of TEE domain switches at runtime,
 as seen for CFLAT and OAT for Embench-IOT benchmarks, when applied to whole programs.
@@ -647,17 +647,17 @@ OAT reports an average runtime overhead of 2.7\% on 5 embedded applications.
 
 This low overhead for both can be explained by the fact that their application
 has been to small programs or ``operations'' that span a few thousand control-flow events.
-When applied to whole programs, the overhead turns out to be more than 1000x.{[}\citeproc{ref-blast}{25}{]}
+When applied to whole programs, the overhead turns out to be more than 1000x.{[}\citeproc{ref-blast}{26}{]}
 This means, a program that takes a few seconds would take hours to complete.
 Other previous works, like CFLAT and OAT, have mostly been applied to small
-programs or to programs that work in specialized environments {[}?? CITEME{]}{[}\citeproc{ref-blast}{25}{]}.
+programs or to programs that work in specialized environments {[}?? CITEME{]}{[}\citeproc{ref-blast}{26}{]}.
 Prior work has also shown that a Vrf can miss attacks that are directed against
 a program when paths in only some parts of it are attested {[}?? CITEME{]}.
 Therefore, it's better for Vrf to be able to attest the entire execution of a program.
 
-BLAST {[}\citeproc{ref-blast}{25}{]} was then proposed, which overcame the limitations of CFLAT and OAT while
+BLAST {[}\citeproc{ref-blast}{26}{]} was then proposed, which overcame the limitations of CFLAT and OAT while
 also adding whole program control flow attestation capabilities. It's discussed
-in detail later on in \hyperref[blast]{Primary Works - BLAST subsection}.
+in detail later on in Primary Works - \hyperref[blast]{1.3.1 BLAST} subsection.
 
 Also, most CFA techniques do not guarantee that the report will be recieved by Vrf.
 The Vrf may not trust the output recieved by it unless CFlog is attached to it,
@@ -772,7 +772,7 @@ The registers and their usage are as follows:{[}\citeproc{ref-armasm-user-guide}
 
 \emph{Sidenote:} XNU (Apple iOS and MacOS) ABI's conventions differ from the aforementioned one.
 Although private and undocumented, it can be seen from the source {[}\citeproc{ref-apple-oss}{14}{]} that
-the main differences (as of 02 May 2025) are:{[}\citeproc{ref-so-xnu-abi}{23}{]}
+the main differences (as of 02 May 2025) are:{[}\citeproc{ref-so-xnu-abi}{24}{]}
 
 \begin{itemize}
 \tightlist
@@ -976,7 +976,7 @@ they can still run on old processors that do not support PAC features.
 The instruction would just be treated as a \texttt{NOP}.
 This is accomplished by encoding the instructions as ``hints'' to the processor.
 These include: \texttt{AUTIx1716}, \texttt{AUTIxSP}, \texttt{AUTIxZ}, \texttt{PACIx1716}, \texttt{PACIxSP}, \texttt{PACIxZ} and \texttt{XPACLRI}.
-Where (lower) \texttt{x} is either \texttt{A} or \texttt{B} depending on the key to be used.{[}\citeproc{ref-sipearl}{24}{]}
+Where (lower) \texttt{x} is either \texttt{A} or \texttt{B} depending on the key to be used.{[}\citeproc{ref-sipearl}{25}{]}
 More in next section on keys. There are many more instructions,
 but for now we'll just talk about these NOP-space ones.
 
@@ -1106,7 +1106,7 @@ The \texttt{BTI} instruction has an argument that further specifies what types o
 \end{itemize}
 
 There are some more rules to BTI like processor states for each target instruction type.
-Please refer the Sipearl Whitepaper{[}\citeproc{ref-sipearl}{24}{]}, or Arm Documentation for PAC and BTI{[}\citeproc{ref-arm-pacbti}{5}{]} for more details.
+Please refer the Sipearl Whitepaper{[}\citeproc{ref-sipearl}{25}{]}, or Arm Documentation for PAC and BTI{[}\citeproc{ref-arm-pacbti}{5}{]} for more details.
 
 \subsubsection{NOP-space}\label{nop-space}
 
@@ -1180,7 +1180,7 @@ This process is shown in figure \ref{fig:smc-convention}.
 \subsection{OP-TEE}\label{op-tee}
 
 One example of a Trusted Kernel is OP-TEE. It was developed by ST-Ericsson,
-and is now an open source project maintained by Linaro.{[}\citeproc{ref-optee}{17}{]}.
+and is now an open source project maintained by Linaro.{[}\citeproc{ref-optee}{18}{]}.
 The rich applications call OP-TEE Driver through TEE Client API. The Driver
 is then responsible for the communication with the OP-TEE kernel.
 
@@ -1197,10 +1197,10 @@ is then responsible for the communication with the OP-TEE kernel.
 
 \subsection{BLAST}\label{blast}
 
-As mentioned in \hyperref[cfatechniques]{CFA - Techniques}, attestation has rarely targeted whole programs.
+As mentioned in \hyperref[cfatechniques]{1.1.2 CFA - Techniques}, attestation has rarely targeted whole programs.
 And their approaches did not scale when applied to whole program paths, mainly
-due to the sheer number of domain transitions between REE/TEE.{[}\citeproc{ref-blast}{25}{]}
-BLAST{[}\citeproc{ref-blast}{25}{]} was developed in 2023 with whole program paths in mind.
+due to the sheer number of domain transitions between REE/TEE.{[}\citeproc{ref-blast}{26}{]}
+BLAST{[}\citeproc{ref-blast}{26}{]} was developed in 2023 with whole program paths in mind.
 They took inspiration from program profiling literature to decrease the said overheads.
 
 \subsubsection{How it works}\label{how-it-works}
@@ -1292,13 +1292,13 @@ of acyclic paths in the CFG. This counter can be used to uniquely identify the
 runtime path that was taken by the function.
 
 This results in \texttt{2x} compact representation of paths compared to OAT's bit tracing,
-and it places instrumentation at fewer locations.{[}\citeproc{ref-blast}{25}{]}
+and it places instrumentation at fewer locations.{[}\citeproc{ref-blast}{26}{]}
 
 \paragraph{WPP:}\label{wpp}
 
 BLAST then takes the large log, and compactly represents it using a context-free
 grammar called WPP. It is an extension of Ball-Larus numbering, to build a single
-control flow path through the complete program.{[}\citeproc{ref-laruswpp}{16}, \citeproc{ref-blast}{25}{]}
+control flow path through the complete program.{[}\citeproc{ref-laruswpp}{17}, \citeproc{ref-blast}{26}{]}
 This takes the log, that can grow upto MBs or even GBs in size, and converts into
 a WPP representation that's just a few hundred bytes big.
 
@@ -1310,7 +1310,7 @@ a WPP representation that's just a few hundred bytes big.
 
 The thread responsible of committing the log to TEE would have to run in parallel
 to the program. Single core settings had an average runtime overhead of 175\%
-as compared to 67\% of multi-core execution.{[}\citeproc{ref-blast}{25}{]}
+as compared to 67\% of multi-core execution.{[}\citeproc{ref-blast}{26}{]}
 
 Reserving 2 registers may cause compatibility issues, especially with programs
 that rely on inline assembly. In which case, BLAST would not compile.
@@ -1392,19 +1392,21 @@ Before going forward, we should list out some of our assumptions:
 \item
   Communication between Vrf and Prv is secure.
 \item
-  OS is not trusted if and only if \sethlcolor{pink}\hl{page management?}\sethlcolor{correctioncolor} is handled
+  OS is not trusted if and only if page management and interrupt handling is mediated
   by the secure monitor.
+\item
+  Libraries are instrumented and statically linked to the binary.
 \item
   \sethlcolor{pink}\hl{\ldots{}}\sethlcolor{correctioncolor}
 \end{itemize}
 
-\section{How to add Integrity guarantees?}\label{how-to-add-integrity-guarantees}
+\section{How to add Integrity guarantees?}\label{adding-integrity}
 
-As discussed in \hyperref[cfi]{CFI}, when talking about code reuse attacks, they can be further divided into
+As discussed in \hyperref[cfi]{1.1.1 - CFI}, when talking about code reuse attacks, they can be further divided into
 Control flow hijacking (control data) and Data only (non-control data) attacks.
 We will talk about preventing control flow hijacking attacks first.
 The two main categories of control flow hijacking attacks are: ROP and JOP.
-We have talked about them in ARM Specifics - \hyperref[pac-bg]{PAC} and \hyperref[bti-bg]{BTI} respectively.
+We have talked about them in ARM Specifics \hyperref[pac-bg]{1.2.2 - PAC} and \hyperref[bti-bg]{1.2.3 - BTI} respectively.
 
 Adding BTI to a binary would prevent JOP attacks disabling an attacker from changing
 the control flow of the program and corrupting the forward edges of the CFG.
@@ -1427,7 +1429,7 @@ require a tag check in the address. Checking and Violations can be handled both
 synchronously and asynchronously depending on performance needs.
 As the tags, like PAC, use upper bits of the address, PAC would have fewer bits available.
 
-But, MTE support for processors and Kernel is in early stage and is actively being worked upon.{[}\citeproc{ref-mte-kern-patch}{26}{]}
+But, MTE support for processors and Kernel is in early stage and is actively being worked upon.{[}\citeproc{ref-mte-kern-patch}{27}{]}
 Therefore, we will skip this feature for now and it can be used in the future when platforms
 have better support for it.
 
@@ -1457,7 +1459,7 @@ Binary size overhead for these, when checked for GLIBC by ARM, was 2.9\% for bot
 when considering backwards compatibility. If compiled for Armv8.3-A and later,
 it drops to 1.61\% {[}\citeproc{ref-arm-pacbti}{5}{]}.
 This overhead is less significant when compared to BLAST instrumentation, which
-came to 64\% without inlining {[}\citeproc{ref-blast}{25}{]}.
+came to 64\% without inlining {[}\citeproc{ref-blast}{26}{]}.
 
 \sethlcolor{pink}\hl{We will discuss this further in \#eval after we implement extended BLAST.}\sethlcolor{correctioncolor}
 
@@ -1465,28 +1467,13 @@ came to 64\% without inlining {[}\citeproc{ref-blast}{25}{]}.
 
 As mentioned previously, PAC and BTI can be backwards compatible with ARMv8-A processors
 that do not support them, but will just be treated as \texttt{NOP} instructions.
-The same binary would run on Armv8.5-A processors with PAC + BTI guarantees, and
-Armv8.3-A with BTI turned off.
-\sethlcolor{pink}\hl{We also should keep in mind that PAC support is only enabled if the OS and the
-shared libraries are also PAC enabled.}\sethlcolor{correctioncolor}
-{[}?? VERIFY{]}
+The same binary would run on ARMv8.5-A processors with PAC + BTI guarantees, and
+ARMv8.3-A with BTI turned off.
+We also should keep in mind that PAC support is only enabled if the linked libraries
+are also PAC enabled.
+Compatibility is discussed in further detail in section \hyperref[compatibility]{3.2 Compatibility}.
 
-\subsubsection{What happens to BLAST's portability to other platforms?}\label{what-happens-to-blasts-portability-to-other-platforms}
-
-\sethlcolor{pink}\hl{Edit/Add here}\sethlcolor{correctioncolor}
-
-\begin{itemize}
-\tightlist
-\item
-  what is our target compatibility then?
-  ARM8? arm9? backwards? \#eval
-\item
-  portability to other platforms? can be added to other CFA? \#eval
-\item
-  how does it all look at the end?
-\end{itemize}
-
-\section{PAC + BTI gives us room to optimize BLAST}\label{pac-bti-gives-us-room-to-optimize-blast}
+\section{PAC + BTI gives us room to optimize BLAST}\label{optimizing-blast}
 
 Now that we have checks on branches and calls, we do not need to log each loop's iteration.
 Loop labels are protected by \texttt{BTI\ j} landing pads. They cannot be jumped to arbitrarily.
@@ -1531,16 +1518,62 @@ This means the log levels are set at compile time, and cannot be changed at runt
 For our case, an attacker either controls the Prv or is a malicious Prv that changes
 the control flow of the program, while trying to keep the CFlog intact
 or succeeds in completing malicious operations before Vrf gets the report.
-We can show that our extensions to BLAST add some integrity guarantees and
-make this harder to do. Some of these guarantees are inherited from BLAST, and
-as described in {[}\#implementation{]}, we add on top of them instead of losing any.
+A weaker set of these guarantees provided by BLAST, target an attacker that changes the control flow,
+but cares about not being detected.
+As described in sections \hyperref[adding-integrity]{2.2 - Adding Integrity} and
+\hyperref[optimizing-blast]{2.3 - Optimizing Blast}, we add on top this weaker set of guarantees,
+to provide the integrity guarantees.
 
-\begin{itemize}
-\tightlist
-\item
-  Reliable delivery can be added on top
-  TA can be configured to send continuout reports, and CFI fault handlers to kill + report.
-\end{itemize}
+Code corruption attacks that would replace the code can be prevented
+as the function calls and returns would generate exceptions without properly signed
+addresses. And even still, attacks would be detected as the call/return addresses and
+the path numbers collected in the CFlog would not match. For code injection attacks,
+we assume that Prv has data-execution prevention implemented in the REE.
+For ensuring the integrity of the CFlog, all memory stores from code already inside the
+program are followed by SFI instrumentation.
+
+As for the possibility of code-reuse attacks, the target surface for any jumps is
+decreased just to \texttt{bti} instructions, while the jumps (and returns) themselves are
+protected by pointer authentication. The increase in binary sizes from enabling BTI is \textasciitilde2\% {[}\citeproc{ref-arm-pacbti}{5}{]},
+that means the jump target surface for code-reuse attacks decreases to that amount.
+Attacker would need to target those gadgets, while also considering
+pointer authentication. Any successfull attacks bypassing these measures, would
+be detected in the CFlog due to BLAST instrumentation. To prevent detection,
+attacker would also need to find gadgets in the reduced subset to modify \texttt{BLReg} and \texttt{LogReg}.
+BLAST already provides guarantees against bypassing detection {[}\citeproc{ref-blast}{26}{]}.
+
+Attacks to program data to alter the control flow of a program is detected in the CFlog.
+But, it would still be possible to alter the sensitive variables in a way that
+does not affect the control flow. These attacks are not in our scope or the threat model.
+However, this can be addressed by adding instrumentation that also logs the values
+of sensitive variables alongside the CFlog {[}?? CITEME BLAST-47{]}.
+
+Reliable, Continuous or On-demand delivery of CFreport is orthogonal to this work, but can
+be added on top to provide additional guarantees. TA can be configured to send
+continuous reports, so that Vrf can detect attacks early on and take action accordingly.
+Also, the CFI exception handlers can be configured to report violations, and take
+measures to abort execution or perform recovery. This is especially useful
+in applications where active attacks are absent, but we need similar guarantees on
+execution of the operations. For example, a rover, satellite or a robotic arm controller.
+
+\section{Compatibility}\label{compatibility}
+
+Although the measures described so far are ARM specific, the concepts themselves
+are portable to other platforms and targets.
+For example, if PAC is replaced with something else, which provides similar
+guarantees, our techniques would still work. Case in point, Intel has Indirect
+Branch Tracking (IBT) for x86-64 which gives instructions that act as branch targets {[}\citeproc{ref-intel-ibt}{15}{]}.
+
+As for the compatibility of the prototype, if compiled with \texttt{-march=armv8a}, it
+provides a binary that's backwards compatible with ARMv8-A processors,
+but does not provide the integrity guarantees.
+The integrity additions are only fully supported on ARMv8.5-A and later microarchitectures.
+So, the prototype is fully compatible with those, while providing only attestation for
+backwards compatible platforms.
+
+This work, as with BLAST, can be applied to other CFA approaches to provide
+integrity and/or performance. Similarly, Data Flow Integrity and Data Flow Attestation
+techniques are complementary to this.
 
 \section{Performance}\label{performance}
 
@@ -1657,52 +1690,56 @@ This first appendix includes an R chunk that was hidden in the document (using \
 \CSLLeftMargin{{[}14{]} }%
 \CSLRightInline{Apple Inc. 2025. XNU source - apple OSS distributions. Retrieved from \url{https://github.com/apple-oss-distributions/xnu}}
 
-\bibitem[\citeproctext]{ref-kern1999formal}
+\bibitem[\citeproctext]{ref-intel-ibt}
 \CSLLeftMargin{{[}15{]} }%
+\CSLRightInline{Intel. 2023. 12th generation intel core processors datasheet. Retrieved from \url{https://edc.intel.com/content/www/us/en/design/ipla/software-development-platforms/client/platforms/alder-lake-desktop/12th-generation-intel-core-processors-datasheet-volume-1-of-2/010/indirect-branch-tracking/}}
+
+\bibitem[\citeproctext]{ref-kern1999formal}
+\CSLLeftMargin{{[}16{]} }%
 \CSLRightInline{Christoph Kern and Mark R Greenstreet. 1999. Formal verification in hardware design: A survey. \emph{ACM Transactions on Design Automation of Electronic Systems (TODAES)} 4, 2 (1999), 123--193.}
 
 \bibitem[\citeproctext]{ref-laruswpp}
-\CSLLeftMargin{{[}16{]} }%
+\CSLLeftMargin{{[}17{]} }%
 \CSLRightInline{James R Larus. 1999. Whole program paths. \emph{ACM SIGPLAN Notices} 34, 5 (1999), 259--269.}
 
 \bibitem[\citeproctext]{ref-optee}
-\CSLLeftMargin{{[}17{]} }%
+\CSLLeftMargin{{[}18{]} }%
 \CSLRightInline{Linaro Limited. 2025. OPTEE - TrustedFirmware. Retrieved from \url{https://www.trustedfirmware.org/projects/op-tee/}}
 
 \bibitem[\citeproctext]{ref-luk2005dynamic}
-\CSLLeftMargin{{[}18{]} }%
+\CSLLeftMargin{{[}19{]} }%
 \CSLRightInline{Chi-Keung Luk, Robert Cohn, Robert Muth, Harish Patil, Artur Klauser, Geoff Lowney, Steven Wallace, Vijay Janapa Reddi, and Kim Hazelwood. 2005. Pin: Building customized program analysis tools with dynamic instrumentation. \emph{Acm sigplan notices} 40, 6 (2005), 190--200.}
 
 \bibitem[\citeproctext]{ref-millerfuzzing}
-\CSLLeftMargin{{[}19{]} }%
+\CSLLeftMargin{{[}20{]} }%
 \CSLRightInline{Barton P Miller, Lars Fredriksen, and Bryan So. 1990. An empirical study of the reliability of UNIX utilities. \emph{Communications of the ACM} 33, 12 (1990), 32--44.}
 
 \bibitem[\citeproctext]{ref-artoftesting}
-\CSLLeftMargin{{[}20{]} }%
+\CSLLeftMargin{{[}21{]} }%
 \CSLRightInline{Glenford J Myers, Corey Sandler, and Tom Badgett. 2011. \emph{The art of software testing}. John Wiley \& Sons.}
 
 \bibitem[\citeproctext]{ref-quinlan2009source}
-\CSLLeftMargin{{[}21{]} }%
+\CSLLeftMargin{{[}22{]} }%
 \CSLRightInline{Daniel Quinlan and Thomas Panas. 2009. Source code and binary analysis of software defects. In \emph{Proceedings of the 5th annual workshop on cyber security and information intelligence research: Cyber security and information intelligence challenges and strategies}, 2009. 1--4.}
 
 \bibitem[\citeproctext]{ref-bruceessay}
-\CSLLeftMargin{{[}22{]} }%
+\CSLLeftMargin{{[}23{]} }%
 \CSLRightInline{Bruce Schneier. 2000. The process of security. Retrieved from \url{https://www.schneier.com/essays/archives/2000/04/the_process_of_secur.html}}
 
 \bibitem[\citeproctext]{ref-so-xnu-abi}
-\CSLLeftMargin{{[}23{]} }%
+\CSLLeftMargin{{[}24{]} }%
 \CSLRightInline{Siguza. 2023. XNU systemcall ABI summary - StackOverflow. Retrieved from \url{https://stackoverflow.com/a/56993314}}
 
 \bibitem[\citeproctext]{ref-sipearl}
-\CSLLeftMargin{{[}24{]} }%
+\CSLLeftMargin{{[}25{]} }%
 \CSLRightInline{Sipearl. 2023. Control flow integrity on Arm64 systems. Retrieved from \url{https://sipearl.com/sipearl-white-paper-anti-malware-active-protection-on-arm64-systems}}
 
 \bibitem[\citeproctext]{ref-blast}
-\CSLLeftMargin{{[}25{]} }%
+\CSLLeftMargin{{[}26{]} }%
 \CSLRightInline{Nikita Yadav and Vinod Ganapathy. 2023. Whole-program control-flow path attestation. In \emph{Proceedings of the 2023 ACM SIGSAC conference on computer and communications security}, 2023. 2680--2694.}
 
 \bibitem[\citeproctext]{ref-mte-kern-patch}
-\CSLLeftMargin{{[}26{]} }%
+\CSLLeftMargin{{[}27{]} }%
 \CSLRightInline{Yeoreum Yun. 2025. Kernel patch - support for FEAT\_MTE\_STORE\_ONLY feature. Retrieved from \url{https://lwn.net/ml/all/20250507154654.1937588-1-yeoreum.yun@arm.com/}}
 
 \end{CSLReferences}

@@ -16,11 +16,61 @@ documentclass: book
 For our case, an attacker either controls the Prv or is a malicious Prv that changes
 the control flow of the program, while trying to keep the CFlog intact 
 or succeeds in completing malicious operations before Vrf gets the report.
-We can show that our extensions to BLAST add some integrity guarantees and 
-make this harder to do. Some of these guarantees are inherited from BLAST, and
-as described in [#implementation], we add on top of them instead of losing any.
+A weaker set of these guarantees provided by BLAST, target an attacker that changes the control flow, 
+but cares about not being detected.
+As described in sections [2.2 - Adding Integrity](#adding-integrity) and 
+[2.3 - Optimizing Blast](#optimizing-blast), we add on top this weaker set of guarantees,
+to provide the integrity guarantees.
 
-- Reliable delivery can be added on top
-TA can be configured to send continuout reports, and CFI fault handlers to kill + report.
+Code corruption attacks that would replace the code can be prevented
+as the function calls and returns would generate exceptions without properly signed
+addresses. And even still, attacks would be detected as the call/return addresses and
+the path numbers collected in the CFlog would not match. For code injection attacks,
+we assume that Prv has data-execution prevention implemented in the REE.
+For ensuring the integrity of the CFlog, all memory stores from code already inside the
+program are followed by SFI instrumentation.
+
+As for the possibility of code-reuse attacks, the target surface for any jumps is
+decreased just to `bti` instructions, while the jumps (and returns) themselves are
+protected by pointer authentication. The increase in binary sizes from enabling BTI is ~2% [@arm-pacbti],
+that means the jump target surface for code-reuse attacks decreases to that amount.
+Attacker would need to target those gadgets, while also considering 
+pointer authentication. Any successfull attacks bypassing these measures, would
+be detected in the CFlog due to BLAST instrumentation. To prevent detection, 
+attacker would also need to find gadgets in the reduced subset to modify `BLReg` and `LogReg`.
+BLAST already provides guarantees against bypassing detection [@blast].
+
+Attacks to program data to alter the control flow of a program is detected in the CFlog.
+But, it would still be possible to alter the sensitive variables in a way that
+does not affect the control flow. These attacks are not in our scope or the threat model.
+However, this can be addressed by adding instrumentation that also logs the values
+of sensitive variables alongside the CFlog [?? CITEME BLAST-47].
+
+Reliable, Continuous or On-demand delivery of CFreport is orthogonal to this work, but can
+be added on top to provide additional guarantees. TA can be configured to send
+continuous reports, so that Vrf can detect attacks early on and take action accordingly.
+Also, the CFI exception handlers can be configured to report violations, and take
+measures to abort execution or perform recovery. This is especially useful
+in applications where active attacks are absent, but we need similar guarantees on
+execution of the operations. For example, a rover, satellite or a robotic arm controller.
+
+## Compatibility
+
+Although the measures described so far are ARM specific, the concepts themselves
+are portable to other platforms and targets.
+For example, if PAC is replaced with something else, which provides similar
+guarantees, our techniques would still work. Case in point, Intel has Indirect 
+Branch Tracking (IBT) for x86-64 which gives instructions that act as branch targets [@intel-ibt].
+
+As for the compatibility of the prototype, if compiled with `-march=armv8a`, it
+provides a binary that's backwards compatible with ARMv8-A processors, 
+but does not provide the integrity guarantees.
+The integrity additions are only fully supported on ARMv8.5-A and later microarchitectures.
+So, the prototype is fully compatible with those, while providing only attestation for 
+backwards compatible platforms.
+
+This work, as with BLAST, can be applied to other CFA approaches to provide
+integrity and/or performance. Similarly, Data Flow Integrity and Data Flow Attestation
+techniques are complementary to this.
 
 ## Performance
