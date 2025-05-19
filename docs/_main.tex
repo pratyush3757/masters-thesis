@@ -461,7 +461,7 @@ result in disasters - financial or otherwise.
 
 For such a program running on a device, we need to ensure that it ran correctly
 (meaning - as intended by the logic of the code).
-But just writing good code doesn't save it from other factors that are present while running it.
+But just writing ``good'' code doesn't save it from other factors that are present while running it.
 There are a few factors that may influence the program to not behave correctly:{[}?? CITEME{]}
 
 \begin{enumerate}
@@ -477,16 +477,15 @@ There are a few factors that may influence the program to not behave correctly:{
   The device's environment is adversarial. Eg. A nuclear plant's control panel.
 \end{enumerate}
 
-\sethlcolor{pink}\hl{define control flow here\ldots{}}\sethlcolor{correctioncolor}
-
 For factors 1-2, there are techniques like source code auditing, testing,
 fuzzing, static and dynamic program analysis, and formal verification that try to minimize the software/hardware bugs.
 {[}\citeproc{ref-godefroid2012sage}{13}, \citeproc{ref-kern1999formal}{16}, \citeproc{ref-luk2005dynamic}{19}--\citeproc{ref-quinlan2009source}{22}{]}
 
 For factor 3, there are various types of results that are possible ranging from
 Denial of Service to Information Leak.
-Our focus is on preventing the control flow of the program from changing,
-and for that, the techniques come under the term Control Flow Integrity (CFI).{[}\citeproc{ref-sok}{2}{]}
+Our focus is on preventing the control flow (the order of instructions that run for a given input)
+of the program from changing, and for that, the techniques come under the term
+Control Flow Integrity (CFI).{[}\citeproc{ref-sok}{2}{]}
 
 But what if the adversary is the device's environment like factor 4?
 Or what do we do about the fact that we still cannot guarantee that the program is secure?
@@ -498,44 +497,67 @@ For simple programs that process an input to give a deterministic output like
 counting prime numbers or calculators, it is easy to just verify the output.
 But for non-deterministic or complex programs with side-effects (changes to the
 system or device - like writing to a file, or moving a robot arm), verifying the
-output is not feasible. \sethlcolor{pink}\hl{One way is to instrument the system to check that the
+output is not feasible. One way is to instrument the system to check that the
 control flow of the program is as expected, which in turn may indicate
-that the program ran correctly.}\sethlcolor{correctioncolor}
-And for this instrumentation, the set of techniques is called Control Flow
+that the program ran correctly.
+And the set of techniques for this instrumentation is called Control Flow
 Attestation (CFA).
 
 \section{Control Flow Techniques}\label{control-flow-techniques}
 
 Let us now look at both CFI and CFA techniques in detail to know their aims and the current
-capabilities \sethlcolor{pink}\hl{afforded to us by them.}\sethlcolor{correctioncolor}
+capabilities afforded to us by them.
 
 \subsection{CFI}\label{cfi}
 
-\subsubsection{What/Why?}\label{whatwhy}
+\subsubsection{What and why?}\label{what-and-why}
 
-\sethlcolor{pink}\hl{Edit/Add to this part}\sethlcolor{correctioncolor}
+When the program executes, it goes through a sequence of instructions. The order
+of these instructions is determined by various factors including the input, current state,
+and some decisions like if-else statements. That order is called the control flow
+of the program, literally how the control of the program flows through the instructions.
+If attackers try to modify how the program behaves, and run instructions
+of their choosing, they modify the control flow of the program. And this type of attack is
+called control-flow hijacking attack.
+The set of techniques to provide integrity against these attacks is CFI.
 
 \subsubsection{History and Techniques used}\label{history-and-techniques-used}
 
-\sethlcolor{pink}\hl{Edit/Add to this part}\sethlcolor{correctioncolor}
-
-\paragraph{Various (3/4) types of attacks possible and their mitigations}\label{various-34-types-of-attacks-possible-and-their-mitigations}
+There are 3 main types of attacks that can change the control flow of a program {[}\citeproc{ref-sok}{2}{]}:
 
 \begin{itemize}
 \tightlist
 \item
-  Code injection
+  Code injection: Attacker puts their own arbitrary code into the memory of the program and runs it.
 \item
-  Code Reuse (ROP/JOP)
+  Code reuse: Attacker uses the instructions already present in the program to execute operations.
 \item
-  Data Manipulation
-\item
-  Side channels
-\item
-  \ldots{}
+  Data manipulation: Attacker changes the data used to take decisions for the control flow.
 \end{itemize}
 
-\sethlcolor{pink}\hl{Mention PAC + BTI discussed in Arm Specifics Section}\sethlcolor{correctioncolor}
+To mitigate against execution of attacker controlled code, the common practice is
+to add Data Execution Prevention (DEP) mechanisms. All parts of program memory except
+(read-only) code sections are marked as non executable, so any injected code would not be executable.
+
+Code reuse attacks then try to bypass DEP by using the existing code in memory to
+execute arbitrary operations. The way to do that would be by changing the control
+flow in a way that jumps between chosen code snippets. These attacks are called
+Return-oriented programming (ROP) and Jump-oriented programming (JOP).
+Some of the mitigations are Address Space Layout Randomization (ASLR),
+Shadow Stacks, Stack Canaries, Pointer Authentication, and Branch Target Identification.
+We'll discuss ROP/JOP with Pointer Authentication and Branch Target
+Identification as their ARM implementations later on in section \hyperref[arm-specifics]{1.2 - ARM Specifics}.
+
+Data manipulation attacks focus on changing the values of variables to change the control flow.
+They have their own set of techniques countering and detecting the attacks called
+Data Flow Integrity (DFI) and Data Flow Attestation (DFA). But they are complementary
+but out of scope for us right now. Our focus will be on Code reuse attacks instead.
+
+CFI was originally proposed by Abadi et al.{[}?? CITEME abadi{]} as a policy-based mitigation
+against control flow hijacking attacks by restricting the execution of a program
+to a pre-computed Control Flow Graph (CFG) {[}\citeproc{ref-sok}{2}{]}. This CFG could be statically or
+dynamically generated, and a close approximation of the CFG would make it harder
+for an attacker to manipulate the control flow as they want.
 
 \subsection{CFA}\label{cfa}
 
@@ -891,7 +913,7 @@ To understand PAC, we must first understand why and what does it aim to fix.
 
 \subsubsection{Return Oriented Programming (ROP)}\label{return-oriented-programming-rop}
 
-We have \sethlcolor{pink}\hl{discussed about stack smashing}\sethlcolor{correctioncolor}, and how arbitrary code execution can be prevented.
+We have discussed how arbitrary code execution can be prevented.
 This means that attackers can't inject and use arbitrary code, but what is stopping
 them from using existing application code? Many applications are huge in size,
 and that means there is a lot of code that has execute permissions already.
@@ -1205,9 +1227,9 @@ They took inspiration from program profiling literature to decrease the said ove
 
 \subsubsection{How it works}\label{how-it-works}
 
-\sethlcolor{pink}\hl{It is a LLVM pass\ldots{}}\sethlcolor{correctioncolor}
-
+It is implemented as a LLVM pass that adds instrumentation to the binary for attestation.
 BLAST reserves 2 registers called \texttt{BLReg} and \texttt{LogReg} for the required instrumentation.
+We'll now discuss how it uses them and tries to optimise the attestation process.
 
 \paragraph{Local Logging:}\label{local-logging}
 
@@ -1297,7 +1319,7 @@ and it places instrumentation at fewer locations.{[}\citeproc{ref-blast}{26}{]}
 \paragraph{WPP:}\label{wpp}
 
 BLAST then takes the large log, and compactly represents it using a context-free
-grammar called WPP. It is an extension of Ball-Larus numbering, to build a single
+grammar called Whole Program Path (WPP). It is an extension of Ball-Larus numbering, to build a single
 control flow path through the complete program.{[}\citeproc{ref-laruswpp}{17}, \citeproc{ref-blast}{26}{]}
 This takes the log, that can grow upto MBs or even GBs in size, and converts into
 a WPP representation that's just a few hundred bytes big.
@@ -1355,6 +1377,10 @@ This contradiction is not addressed in their paper.\sethlcolor{pink}\hl{verify t
 \chapter{Extending BLAST for CFI}\label{extending-blast-for-cfi}
 
 \minitoc 
+
+\emph{Armed} with the background information, we can now take a look at why and how we can improve
+upon BLAST to give additional security guarantees, and maybe get a bit of a performance boost
+while we are at it.
 
 \section{Why?}\label{why-1}
 

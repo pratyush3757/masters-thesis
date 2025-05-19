@@ -15,6 +15,10 @@ documentclass: book
 
 \minitoc <!-- this will include a mini table of contents-->
 
+*Armed* with the background information, we can now take a look at why and how we can improve
+upon BLAST to give additional security guarantees, and maybe get a bit of a performance boost
+while we are at it.
+
 ## Why?
 
 CFA mechanisms rely on the fact that a malicious actor would not want their attack
