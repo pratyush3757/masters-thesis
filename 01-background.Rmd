@@ -833,7 +833,7 @@ be implemented remains a question. Another solution would be to use PAC, which
 was decided against citing performance drawbacks, and that "PA relies on confidential
 data, such as secrets, which exposes it to a wider range of attack surfaces including 
 various side channels [?? CITEME]. In contrast, the current design of CFA+ is transparent, i.e.,
-secret-independent, resulting in a smaller attack surface." [@cfaplus; Section 7].
+secret-independent, resulting in a smaller attack surface." [@cfaplus - Section 7].
 
 Logging for attestation is either done on violation, or on demand from the Vrf. And in both cases,
 the value of `SR` `RR` and `PC` are recorded. The Vrf performs a satisfiability check,
