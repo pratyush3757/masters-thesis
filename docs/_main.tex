@@ -881,19 +881,19 @@ and restore it before return. It looks like this:
 \begin{Shaded}
 \begin{Highlighting}[]
 \FunctionTok{foo:}
-\NormalTok{  // save x30}
+\NormalTok{  ...     }\CommentTok{; save x30}
 \NormalTok{  ...}
-\NormalTok{  bl bar  }\OperatorTok{//}\NormalTok{ call bar}
+\NormalTok{  bl bar  }\CommentTok{; call bar}
 \NormalTok{  ...}
-\NormalTok{  // }\PreprocessorTok{restore}\NormalTok{ x30}
+\NormalTok{  ...     }\CommentTok{; restore x30}
   \ControlFlowTok{ret}
 
 \FunctionTok{bar:}
-\NormalTok{  // save x30}
+\NormalTok{  ...     }\CommentTok{; save x30}
 \NormalTok{  ...}
-\NormalTok{  bl baz  }\OperatorTok{//}\NormalTok{ call baz}
+\NormalTok{  bl baz  }\CommentTok{; call baz}
 \NormalTok{  ...}
-\NormalTok{  // }\PreprocessorTok{restore}\NormalTok{ x30}
+\NormalTok{  ...     }\CommentTok{; restore x30}
   \ControlFlowTok{ret}
 
 \FunctionTok{baz:}
@@ -1286,11 +1286,11 @@ To ensure this, BLAST adds instrumentation after each store instruction to:
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\BuiltInTok{str}\NormalTok{ w8}\OperatorTok{,} \OperatorTok{[}\NormalTok{x29}\OperatorTok{,} \OperatorTok{\#}\DecValTok{4}\OperatorTok{]}                 \OperatorTok{//}\NormalTok{ perform the store}
-\BuiltInTok{add}\NormalTok{ x9}\OperatorTok{,}\NormalTok{ x29}\OperatorTok{,} \OperatorTok{\#}\DecValTok{4}                   \OperatorTok{//}\NormalTok{ obtain the store address}
-\BuiltInTok{and}\NormalTok{ x9}\OperatorTok{,}\NormalTok{ x9}\OperatorTok{,} \OperatorTok{\#}\BaseNTok{0x7ffffffffff00000}   \OperatorTok{//}\NormalTok{ mask the store address}
-\NormalTok{ldr x10}\OperatorTok{,}\NormalTok{ log\_start\_addr           }\OperatorTok{//} \DecValTok{1}\ErrorTok{MB}\OperatorTok{{-}}\NormalTok{aligned log start}
-\NormalTok{subs x9}\OperatorTok{,}\NormalTok{ x9}\OperatorTok{,}\NormalTok{ x10                  }\OperatorTok{//}\NormalTok{ if equal}\OperatorTok{,}\NormalTok{ then abort}\OperatorTok{.}
+\BuiltInTok{str}\NormalTok{ w8}\OperatorTok{,} \OperatorTok{[}\NormalTok{x29}\OperatorTok{,} \OperatorTok{\#}\DecValTok{4}\OperatorTok{]}                 \CommentTok{; perform the store}
+\BuiltInTok{add}\NormalTok{ x9}\OperatorTok{,}\NormalTok{ x29}\OperatorTok{,} \OperatorTok{\#}\DecValTok{4}                   \CommentTok{; obtain the store address}
+\BuiltInTok{and}\NormalTok{ x9}\OperatorTok{,}\NormalTok{ x9}\OperatorTok{,} \OperatorTok{\#}\BaseNTok{0x7ffffffffff00000}   \CommentTok{; mask the store address}
+\NormalTok{ldr x10}\OperatorTok{,}\NormalTok{ log\_start\_addr           }\CommentTok{; 1MB{-}aligned log start}
+\NormalTok{subs x9}\OperatorTok{,}\NormalTok{ x9}\OperatorTok{,}\NormalTok{ x10                  }\CommentTok{; if equal, then abort.}
 \NormalTok{b}\OperatorTok{.}\NormalTok{e \_abort}
 \end{Highlighting}
 \end{Shaded}
@@ -1344,35 +1344,143 @@ This would not be reasonable in certain applications or scenarios like lightweig
 
 \subsubsection{How it works}\label{how-it-works-1}
 
-\sethlcolor{pink}\hl{Edit/Add to this part}\sethlcolor{correctioncolor}
+Similar to BLAST, CFA+ reserves 2 registers, \texttt{x27} and \texttt{x28}, naming them
+\texttt{RR} and \texttt{SR} respectively. They are used to encode/decode the return value in
+\texttt{x30} or the link register to prevent it from tampering.
+
+There are 2 main components: 1. Software instrumentation. Which can be seen as
+a custom implementation of branch/call authentication. 2. BTI.
+
+3 types of code elements are then instrumented {[}\citeproc{ref-cfaplus}{1}{]}:
 
 \begin{itemize}
 \tightlist
 \item
-  Custom PAC
+  \emph{Function Prologues:}
+  All functions that are candidates for indirect calls start
+  with a \texttt{bti\ c}, followed by a block to verify the legitimacy of the caller.
+  That block is followed by a label used for direct calls to that function.\\
+  Checking for legitimate callers is done by analysing type propogation and giving
+  a mask value to all possible callers. If the mask value is present in \texttt{x15} at
+  the time of call, it is legitimate and jump to the direct call label,
+  else jump to an invalid address in \texttt{LR} using \texttt{blr\ x30}.
+  (\texttt{LR} would have an address to a \texttt{bti\ j} so a call would cause a violation.)
+  After the direct call label, the \texttt{LR} is encoded and stored in the stack by using
+  \texttt{LR\ =\ LR} \(\oplus\) \texttt{SR}.
 \item
-  BTI
+  \emph{Function Epilogues:}
+  \texttt{LR} is loaded and unmasked by XORing again with \texttt{SR} before returns.
 \item
-  Logging?
+  \emph{Calls:}
+  Direct and indirect calls are surrounded by instructions that encode and decode the \texttt{SR}.
+  The call instruction is preceeded by instructions to encode \texttt{SR} with a unique ID by XORing it.
+  The call is then followed by a \texttt{bti\ j} landing pad, and instructions to decode the \texttt{SR}.
+  This helps in checking if the call returned from the same callee.
+  If the control returned from somewhere else, it would corrupt the
+  \texttt{SR}'s value which would cause the \texttt{LR} to be corrupted in function epilogue.
 \end{itemize}
+
+It all looks like this:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{foo:}                    \CommentTok{; non{-}leaf callee}
+\NormalTok{  bti c                 }\CommentTok{; landing pad for indirect calls; foo prologue starts}
+\NormalTok{  ldr x27}\OperatorTok{,} \OperatorTok{=}\NormalTok{mask        }\CommentTok{; load the mask into RR}
+  \BuiltInTok{and}\NormalTok{ x27}\OperatorTok{,}\NormalTok{ x27}\OperatorTok{,}\NormalTok{ x15     }\CommentTok{; bitwise AND between mask and ID (in x15)}
+  \BuiltInTok{cmp}\NormalTok{ x27}\OperatorTok{,}\NormalTok{ x15          }\CommentTok{; compare result in x27 with ID}
+\NormalTok{  b}\OperatorTok{.}\NormalTok{eq foo\_direct       }\CommentTok{; if equal, resume foo by jumping to foo\_direct}
+\NormalTok{  blr x30               }\CommentTok{; else jump to invalid address in LR}
+\FunctionTok{foo\_direct:}
+\NormalTok{  eor x30}\OperatorTok{,}\NormalTok{ x30}\OperatorTok{,}\NormalTok{ x28     }\CommentTok{; mask LR (x30) using SR (x28)}
+  \BuiltInTok{str}\NormalTok{ x30}\OperatorTok{,} \KeywordTok{sp}\OperatorTok{[{-}}\DecValTok{8}\OperatorTok{]!}      \CommentTok{; push LR to stack}
+\NormalTok{  ...                   }\CommentTok{; rest of foo prologue}
+\NormalTok{  ...}
+\NormalTok{  ...                   }\CommentTok{; foo epilogue starts}
+\NormalTok{  ldr x30}\OperatorTok{,} \OperatorTok{[}\KeywordTok{sp}\OperatorTok{],} \DecValTok{8}      \CommentTok{; load LR from stack}
+\NormalTok{  eor x30}\OperatorTok{,}\NormalTok{ x30}\OperatorTok{,}\NormalTok{ x28     }\CommentTok{; unmask LR using SR}
+  \ControlFlowTok{ret}
+
+\FunctionTok{bar:}                    \CommentTok{; non{-}root caller}
+\NormalTok{  ...                   }\CommentTok{; bar prologue (similar to foo)}
+\NormalTok{  ...}
+\NormalTok{  ldr x15}\OperatorTok{,} \OperatorTok{=}\NormalTok{IDx         }\CommentTok{; load ID of indirect call}
+\NormalTok{  eor x28}\OperatorTok{,}\NormalTok{ x28}\OperatorTok{,}\NormalTok{ x15     }\CommentTok{; encode SR using ID (in x15)}
+\NormalTok{  blr x9                }\CommentTok{; indirect call, may go to foo or baz}
+\NormalTok{  bti j                 }\CommentTok{; landing pad for ret}
+\NormalTok{  ldr x15}\OperatorTok{,} \OperatorTok{=}\NormalTok{IDx         }\CommentTok{; load ID again}
+\NormalTok{  eor x28}\OperatorTok{,}\NormalTok{ x28}\OperatorTok{,}\NormalTok{ x15     }\CommentTok{; decode SR using ID (in x15)}
+\NormalTok{  ...}
+\NormalTok{  ldr x15}\OperatorTok{,} \OperatorTok{=}\NormalTok{IDy         }\CommentTok{; load ID of direct call}
+\NormalTok{  eor x28}\OperatorTok{,}\NormalTok{ x28}\OperatorTok{,}\NormalTok{ x15     }\CommentTok{; encode SR using ID (in x15)}
+\NormalTok{  bl foo\_direct         }\CommentTok{; direct call to foo}
+\NormalTok{  bti j                 }\CommentTok{; landing pad for ret}
+\NormalTok{  ldr x15}\OperatorTok{,} \OperatorTok{=}\NormalTok{IDy         }\CommentTok{; load ID again}
+\NormalTok{  eor x28}\OperatorTok{,}\NormalTok{ x28}\OperatorTok{,}\NormalTok{ x15     }\CommentTok{; decode SR using ID (in x15)}
+\NormalTok{  ...                   }\CommentTok{; bar epilogue (similar to foo)}
+\end{Highlighting}
+\end{Shaded}
+
+Calling shared libraries is also handled similar to this using \texttt{RR} instead of \texttt{SR}.
+But, just the returns points are checked, and the libraries themselves are not
+instrumented or protected. As for the logging, all violations are logged by an
+exception handler running in the kernel space. Other details about values needed for
+attestation and when they are logged are not discussed in the paper in much detail.
+
+\sethlcolor{pink}\hl{working fig.png cfaplus fig 4}\sethlcolor{correctioncolor}
 
 \subsubsection{Outcome}\label{outcome-1}
 
-\sethlcolor{pink}\hl{Edit/Add to this part}\sethlcolor{correctioncolor}
+CFA+ reports its overall average runtime overhead to be 1.5\%.
+The major factor affecting runtime overhead is the ratio and type of call instructions
+compared to total instructions and the call frequency.
+Direct calls are optimised by skipping the caller checks, and therefore do not
+significantly contribute to runtime overheads. Indirect calls on the other hand
+cause the caller and callee checks to be executed, and add to the runtime overhead.
+External calls to shared libraries are only instrumented at the call sites, with
+no guarantees added to the libraries themselves. So, they have small impact on
+the runtime overhead.
 
 \subsubsection{Limitations}\label{limitations-1}
 
-\sethlcolor{pink}\hl{One of the main limitations of CFA+ is that they do not mention what's their
-(logging policy)?? for attestation. They do not elaborate on whether they have
-fine-grained or course-grained CFA, or even what is their logging mechanism.
-The benchmarks report performance that is too good for the number of domain
-switches they'd need for committing the logs in TEE.}\sethlcolor{correctioncolor}
-Also, the attestation architecture diagram given indicates that the attestation
-agent is triggered on BTI violation, but the \sethlcolor{pink}\hl{text..where??}\sethlcolor{correctioncolor}
-mentions logs to have a violation field. The field indicates weather an entry was due to violation.
-This contradiction is not addressed in their paper.\sethlcolor{pink}\hl{verify this statement}\sethlcolor{correctioncolor}
+A major flaw in the design is that the IDs that are being checked against are static.
+That is, they won't change between executions or even different copies of the same binary.
+Attackers would be able to figure out the IDs and required values for \texttt{SR} and \texttt{RR} using
+reverse engineering and/or symbolic execution. If \texttt{SR}'s value for a given path
+is known, it becomes easy to calculate the needed modifier value to change the
+\texttt{LR} in stack so that when it gets ``unmasked'' with \texttt{SR}, it points to a desired address.
+This enables the return to be controlled by the attacker. As returns can jump to \texttt{bti\ j},
+any such instruction becomes a possible landing pad for it.
 
-\sethlcolor{pink}\hl{rolling their own CFI which has XOR loophole (verify!)}\sethlcolor{correctioncolor}
+Similarly, the protection against indirect calls does little to help. Although
+there is a check for the mask value, if an attacker has ability override a register to
+hijack a \texttt{br} or \texttt{blr} call, loading the target function's mask in \texttt{x15} would not
+add significant difficulty. A call, if hijacked, can then run the whole function
+and its subsequent path normally.
+
+Direct call labels (or symbols as called in the paper) for a function added by CFA+,
+should be followed by \texttt{bti\ jc} to not cause a hardware exception.
+This is because that label is a direct call target as well as a jump target for
+the function's check prologue. This is not shown in the various listings as well as the paper text.
+If it is there, or if the label acts as a \texttt{bti\ jc}, jumps to these labels can be
+arbitrary as there are no checks for legitimate callers following them.
+
+These problems could be solved by using dynamic values for IDs. As for how will that
+be implemented remains a question. Another solution would be to use PAC, which
+was decided against citing performance drawbacks, and that ``PA relies on confidential
+data, such as secrets, which exposes it to a wider range of attack surfaces including
+various side channels {[}?? CITEME{]}. In contrast, the current design of CFA+ is transparent, i.e.,
+secret-independent, resulting in a smaller attack surface.'' {[}{[}\citeproc{ref-cfaplus}{1}{]}; Section 7{]}.
+
+Logging for attestation is either done on violation, or on demand from the Vrf. And in both cases,
+the value of \texttt{SR} \texttt{RR} and \texttt{PC} are recorded. The Vrf performs a satisfiability check,
+followed by \texttt{RR} consistency check for the paths, and a \texttt{SR} + \texttt{PC} consistency check.
+If there is at-least one valid path found, the program is concluded to be benign.
+As the logging is on-demand, an attacker may take control after the readings are taken,
+and would be able to keep it until the next request comes from the Vrf.
+
+Code inside shared libraries is not protected, and checked, therefore it's possible to
+exploit those to gain control of the program without triggering a violation.
 
 \chapter{Extending BLAST for CFI}\label{extending-blast-for-cfi}
 
@@ -1412,7 +1520,7 @@ Before going forward, we should list out some of our assumptions:
 \begin{itemize}
 \tightlist
 \item
-  Write XOR Execute is enabled on pages. Code injection/modification in not possible.
+  Write XOR Execute (\texttt{W} \(\oplus\) \texttt{X}) is enabled on pages. Code injection/modification in not possible.
 \item
   Hardware is implicitly trusted.
 \item
@@ -1621,7 +1729,7 @@ The logging on violation part, although mentioned has not been implemented yet
 in the prototype. This can also be implementation dependent and users may choose
 to abort execution instead of logging.
 
-Some of the assumptions like write XOR execute are not foolproof and there are
+Some of the assumptions like \texttt{W} \(\oplus\) \texttt{X} are not foolproof and there are
 proof of concepts exploiting them. We need to decrease the TCB and the
 assumptions to increase the security guarantees given by this work.
 

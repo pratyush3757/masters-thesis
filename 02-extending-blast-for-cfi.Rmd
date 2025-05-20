@@ -46,7 +46,7 @@ due to attestation, which is a common problem in the CFA literature.[@sok]
 
 Before going forward, we should list out some of our assumptions:
 
-- Write XOR Execute is enabled on pages. Code injection/modification in not possible.
+- Write XOR Execute (`W` $\oplus$ `X`) is enabled on pages. Code injection/modification in not possible.
 - Hardware is implicitly trusted.
 - Communication between Vrf and Prv is secure.
 - OS is not trusted if and only if page management and interrupt handling is mediated

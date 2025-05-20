@@ -25,7 +25,7 @@ The logging on violation part, although mentioned has not been implemented yet
 in the prototype. This can also be implementation dependent and users may choose 
 to abort execution instead of logging.
 
-Some of the assumptions like write XOR execute are not foolproof and there are 
+Some of the assumptions like `W` $\oplus$ `X` are not foolproof and there are 
 proof of concepts exploiting them. We need to decrease the TCB and the 
 assumptions to increase the security guarantees given by this work.
 

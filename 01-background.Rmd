@@ -366,19 +366,19 @@ and restore it before return. It looks like this:
 
 ```asm
 foo:
-  // save x30
+  ...     ; save x30
   ...
-  bl bar  // call bar
+  bl bar  ; call bar
   ...
-  // restore x30
+  ...     ; restore x30
   ret
 
 bar:
-  // save x30
+  ...     ; save x30
   ...
-  bl baz  // call baz
+  bl baz  ; call baz
   ...
-  // restore x30
+  ...     ; restore x30
   ret
 
 baz:
@@ -663,11 +663,11 @@ To ensure this, BLAST adds instrumentation after each store instruction to:
 2. Check that the store address doesn't lie inside the log.
 
 ```asm
-str w8, [x29, #4]                 // perform the store
-add x9, x29, #4                   // obtain the store address
-and x9, x9, #0x7ffffffffff00000   // mask the store address
-ldr x10, log_start_addr           // 1MB-aligned log start
-subs x9, x9, x10                  // if equal, then abort.
+str w8, [x29, #4]                 ; perform the store
+add x9, x29, #4                   ; obtain the store address
+and x9, x9, #0x7ffffffffff00000   ; mask the store address
+ldr x10, log_start_addr           ; 1MB-aligned log start
+subs x9, x9, x10                  ; if equal, then abort.
 b.e _abort
 ```
 
@@ -715,26 +715,132 @@ This would not be reasonable in certain applications or scenarios like lightweig
 ### CFA+
 
 #### How it works
-[Edit/Add to this part]{highlight="pink"}
 
-- Custom PAC
-- BTI
-- Logging?
+Similar to BLAST, CFA+ reserves 2 registers, `x27` and `x28`, naming them 
+`RR` and `SR` respectively. They are used to encode/decode the return value in 
+`x30` or the link register to prevent it from tampering.
+
+There are 2 main components: 1. Software instrumentation. Which can be seen as 
+a custom implementation of branch/call authentication. 2. BTI.
+
+3 types of code elements are then instrumented [@cfaplus]:
+
+- *Function Prologues:*
+All functions that are candidates for indirect calls start
+with a `bti c`, followed by a block to verify the legitimacy of the caller. 
+That block is followed by a label used for direct calls to that function.  
+Checking for legitimate callers is done by analysing type propogation and giving 
+a mask value to all possible callers. If the mask value is present in `x15` at 
+the time of call, it is legitimate and jump to the direct call label, 
+else jump to an invalid address in `LR` using `blr x30`. 
+(`LR` would have an address to a `bti j` so a call would cause a violation.)
+After the direct call label, the `LR` is encoded and stored in the stack by using
+`LR = LR` $\oplus$ `SR`.
+- *Function Epilogues:*
+`LR` is loaded and unmasked by XORing again with `SR` before returns.
+- *Calls:* 
+Direct and indirect calls are surrounded by instructions that encode and decode the `SR`.
+The call instruction is preceeded by instructions to encode `SR` with a unique ID by XORing it.
+The call is then followed by a `bti j` landing pad, and instructions to decode the `SR`.
+This helps in checking if the call returned from the same callee. 
+If the control returned from somewhere else, it would corrupt the 
+`SR`'s value which would cause the `LR` to be corrupted in function epilogue.
+
+It all looks like this:
+```asm
+foo:                    ; non-leaf callee
+  bti c                 ; landing pad for indirect calls; foo prologue starts
+  ldr x27, =mask        ; load the mask into RR
+  and x27, x27, x15     ; bitwise AND between mask and ID (in x15)
+  cmp x27, x15          ; compare result in x27 with ID
+  b.eq foo_direct       ; if equal, resume foo by jumping to foo_direct
+  blr x30               ; else jump to invalid address in LR
+foo_direct:
+  eor x30, x30, x28     ; mask LR (x30) using SR (x28)
+  str x30, sp[-8]!      ; push LR to stack
+  ...                   ; rest of foo prologue
+  ...
+  ...                   ; foo epilogue starts
+  ldr x30, [sp], 8      ; load LR from stack
+  eor x30, x30, x28     ; unmask LR using SR
+  ret
+
+bar:                    ; non-root caller
+  ...                   ; bar prologue (similar to foo)
+  ...
+  ldr x15, =IDx         ; load ID of indirect call
+  eor x28, x28, x15     ; encode SR using ID (in x15)
+  blr x9                ; indirect call, may go to foo or baz
+  bti j                 ; landing pad for ret
+  ldr x15, =IDx         ; load ID again
+  eor x28, x28, x15     ; decode SR using ID (in x15)
+  ...
+  ldr x15, =IDy         ; load ID of direct call
+  eor x28, x28, x15     ; encode SR using ID (in x15)
+  bl foo_direct         ; direct call to foo
+  bti j                 ; landing pad for ret
+  ldr x15, =IDy         ; load ID again
+  eor x28, x28, x15     ; decode SR using ID (in x15)
+  ...                   ; bar epilogue (similar to foo)
+```
+
+Calling shared libraries is also handled similar to this using `RR` instead of `SR`.
+But, just the returns points are checked, and the libraries themselves are not 
+instrumented or protected. As for the logging, all violations are logged by an
+exception handler running in the kernel space. Other details about values needed for
+attestation and when they are logged are not discussed in the paper in much detail.
+
+[working fig.png cfaplus fig 4]{highlight="pink"}
 
 #### Outcome
-[Edit/Add to this part]{highlight="pink"}
+CFA+ reports its overall average runtime overhead to be 1.5%. 
+The major factor affecting runtime overhead is the ratio and type of call instructions
+compared to total instructions and the call frequency.
+Direct calls are optimised by skipping the caller checks, and therefore do not 
+significantly contribute to runtime overheads. Indirect calls on the other hand
+cause the caller and callee checks to be executed, and add to the runtime overhead.
+External calls to shared libraries are only instrumented at the call sites, with
+no guarantees added to the libraries themselves. So, they have small impact on
+the runtime overhead.
+
 
 #### Limitations
-[
-One of the main limitations of CFA+ is that they do not mention what's their 
-(logging policy)?? for attestation. They do not elaborate on whether they have 
-fine-grained or course-grained CFA, or even what is their logging mechanism.
-The benchmarks report performance that is too good for the number of domain 
-switches they'd need for committing the logs in TEE.
-]{highlight="pink"}
-Also, the attestation architecture diagram given indicates that the attestation 
-agent is triggered on BTI violation, but the [text..where??]{highlight="pink"} 
-mentions logs to have a violation field. The field indicates weather an entry was due to violation.
-This contradiction is not addressed in their paper.[verify this statement]{highlight="pink"}
 
-[rolling their own CFI which has XOR loophole (verify!)]{highlight="pink"}
+A major flaw in the design is that the IDs that are being checked against are static.
+That is, they won't change between executions or even different copies of the same binary.
+Attackers would be able to figure out the IDs and required values for `SR` and `RR` using
+reverse engineering and/or symbolic execution. If `SR`'s value for a given path
+is known, it becomes easy to calculate the needed modifier value to change the
+`LR` in stack so that when it gets "unmasked" with `SR`, it points to a desired address.
+This enables the return to be controlled by the attacker. As returns can jump to `bti j`,
+any such instruction becomes a possible landing pad for it.
+
+Similarly, the protection against indirect calls does little to help. Although
+there is a check for the mask value, if an attacker has ability override a register to
+hijack a `br` or `blr` call, loading the target function's mask in `x15` would not
+add significant difficulty. A call, if hijacked, can then run the whole function
+and its subsequent path normally.
+
+Direct call labels (or symbols as called in the paper) for a function added by CFA+, 
+should be followed by `bti jc` to not cause a hardware exception. 
+This is because that label is a direct call target as well as a jump target for 
+the function's check prologue. This is not shown in the various listings as well as the paper text.
+If it is there, or if the label acts as a `bti jc`, jumps to these labels can be
+arbitrary as there are no checks for legitimate callers following them.
+
+These problems could be solved by using dynamic values for IDs. As for how will that
+be implemented remains a question. Another solution would be to use PAC, which
+was decided against citing performance drawbacks, and that "PA relies on confidential
+data, such as secrets, which exposes it to a wider range of attack surfaces including 
+various side channels [?? CITEME]. In contrast, the current design of CFA+ is transparent, i.e.,
+secret-independent, resulting in a smaller attack surface." [@cfaplus; Section 7].
+
+Logging for attestation is either done on violation, or on demand from the Vrf. And in both cases,
+the value of `SR` `RR` and `PC` are recorded. The Vrf performs a satisfiability check,
+followed by `RR` consistency check for the paths, and a `SR` + `PC` consistency check.
+If there is at-least one valid path found, the program is concluded to be benign.
+As the logging is on-demand, an attacker may take control after the readings are taken,
+and would be able to keep it until the next request comes from the Vrf.
+
+Code inside shared libraries is not protected, and checked, therefore it's possible to 
+exploit those to gain control of the program without triggering a violation.
