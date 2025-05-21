@@ -44,7 +44,7 @@ Attacks to program data to alter the control flow of a program is detected in th
 But, it would still be possible to alter the sensitive variables in a way that
 does not affect the control flow. These attacks are not in our scope or the threat model.
 However, this can be addressed by adding instrumentation that also logs the values
-of sensitive variables alongside the CFlog [?? CITEME BLAST-47].
+of sensitive variables alongside the CFlog [@sun2020oat].
 
 Reliable, Continuous or On-demand delivery of CFreport is orthogonal to this work, but can
 be added on top to provide additional guarantees. TA can be configured to send

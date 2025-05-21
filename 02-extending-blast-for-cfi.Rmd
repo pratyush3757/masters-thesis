@@ -34,11 +34,11 @@ matter if we can detect if afterwards as the person's safety has already been co
 Our goal in this case is to prevent these kinds of scenarios.
 
 People have been working on CFI and CFA parallelly as two solutions to similar
-problems, but they have not thought about applying both of these together.[@sok; @cfaplus]
+problems, but they have not thought about applying both of these together [@sok; @cfaplus].
 When applied together, these techniques sometimes complement each other and cover
 each other's disadvantages. For example, adding integrity to some parts of the
 code would remove the need for logging those parts, decreasing the runtime overhead
-due to attestation, which is a common problem in the CFA literature.[@sok]
+due to attestation, which is a common problem in the CFA literature [@sok].
 
 [CFA+ is there, but the limitations are listed, we need better solution.]{highlight="pink"}
 
@@ -85,7 +85,7 @@ require a tag check in the address. Checking and Violations can be handled both
 synchronously and asynchronously depending on performance needs.
 As the tags, like PAC, use upper bits of the address, PAC would have fewer bits available.
 
-But, MTE support for processors and Kernel is in early stage and is actively being worked upon.[@mte-kern-patch]
+But, MTE support for processors and Kernel is in early stage and is actively being worked upon [@mte-kern-patch].
 Therefore, we will skip this feature for now and it can be used in the future when platforms
 have better support for it.
 
@@ -98,7 +98,7 @@ we choose to not use them for now.
 
 According to ARM's testing, when these features were enabled for GLIBC, the number 
 of available gadgets was reduced by 97.65%. This can be seen in figure \@ref(fig:pac-bti-gadgets).
-Similar results were also seen for CFA+[@cfaplus].
+Similar results were also seen for CFA+ [@cfaplus].
 
 ```{r pac-bti-gadgets, fig.cap="ROP and JOP gadgets in GLIBC", out.width='100%', fig.align='center'}
 knitr::include_graphics("./imgs/placeholder-pac-bti-gadgets.png")
