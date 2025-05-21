@@ -74,3 +74,202 @@ integrity and/or performance. Similarly, Data Flow Integrity and Data Flow Attes
 techniques are complementary to this.
 
 ## Performance
+
+```{r setup-helpers}
+geomean <- function(x) exp(mean(log(x)))
+geosd <- function(x) exp(sd(log(x)))
+```
+
+```{r logevents}
+library(knitr)
+library(kableExtra)
+
+df <- read.csv("./data/logevents.csv",
+               header = TRUE)
+
+
+col_names = linebreak(c("Embench IoT\nProgram", "Conditional\nBranches", "Unconditional\nBranches", 
+              "Loop\nHeaders", "Function\nCalls", "Returns/Exits"))
+
+foot_str = "The number of events is taken with CPU_MHZ=1000, a parameter denoting the number of runs of each top-level benchmark function."
+
+df %>%
+  kable(caption = "Number of logging events",
+        escape = F,
+        format="latex",
+        booktabs = TRUE,
+        col.names = col_names,
+        format.args = list(big.mark = ",")) %>% 
+  kable_styling(latex_options = "scale_down",
+        bootstrap_options = "striped") %>%
+  row_spec(0, align = "c") %>%
+  footnote(general_title = "Note.", 
+           footnote_as_chunk = TRUE,
+           threeparttable = TRUE,
+           general = foot_str)
+```
+
+```{r logevent-totals}
+col_names = linebreak(c("Embench IoT\nProgram", "CFLAT", "OAT",
+                      "BLAST", "BLAST\nInter-Procedure"))
+
+total_df = data.frame(program= df$program)
+
+total_df$cflat <- df$conditional_branches + df$unconditional_branches + df$calls +
+                  df$ret_exits
+
+total_df$oat <- df$conditional_branches + df$ret_exits
+
+total_df$blast <- df$loop_headers + df$calls + df$ret_exits
+
+total_df$blast_loglevel <- df$calls + df$ret_exits
+
+diff_percent <- ((total_df$blast - total_df$blast_loglevel) / total_df$blast) * 100
+
+diff_25_low = quantile(diff_percent)[2]
+diff_median = quantile(diff_percent)[3]
+
+foot_str = sprintf("Inter-Procedure log level has median difference of %.2f%% with %0.2f%% being 25%% lows.", diff_median, diff_25_low)
+
+total_df %>%
+  kable(caption = "Total events",
+        escape = F,
+        format="latex",
+        booktabs = TRUE,
+        col.names = col_names,
+        format.args = list(big.mark = ",")) %>% 
+  kable_styling(latex_options = "scale_down",
+        bootstrap_options = "striped") %>%
+  row_spec(0, align = "c") %>%
+  footnote(general_title = "Note.", 
+           footnote_as_chunk = TRUE,
+           threeparttable = TRUE,
+           general = foot_str)
+```
+
+
+```{r cleandata}
+library(knitr)
+library(kableExtra)
+
+baseline_raw <- read.csv("./data/baseline.csv",
+                     header = TRUE)
+baseline_pacbti_raw <- read.csv("./data/baseline_pacbti.csv",
+                     header = TRUE)
+blast_raw <- read.csv("./data/blast.csv",
+                     header = TRUE)
+pacbti_raw <- read.csv("./data/pacbti.csv",
+                     header = TRUE)
+blast_optimised_raw <- read.csv("./data/blast_optimised.csv",
+                     header = TRUE)
+
+## Helper Functions
+cubic_time <- function(x) x$cubic_end - x$cubic_start
+crc32_time <- function(x) x$crc32_end - x$crc32_start
+edn_time <- function(x) x$edn_end - x$edn_start
+huffbench_time <- function(x) x$huffbench_end - x$huffbench_start
+minver_time <- function(x) x$minver_end - x$minver_start
+st_time <- function(x) x$st_end - x$st_start
+ud_time <- function(x) x$ud_end - x$ud_start
+matmult_time <- function(x) x$matmult_end - x$matmult_start
+mont64_time <- function(x) x$mont64_end - x$mont64_start
+nbody_time <- function(x) x$nbody_end - x$nbody_start
+nettle_aes_time <- function(x) x$nettle_aes_end - x$nettle_aes_start
+nettle_sha256_time <- function(x) x$nettle_sha256_end - x$nettle_sha256_start
+primecount_time <- function(x) x$primecount_end - x$primecount_start
+sg_time <- function(x) x$sg_end - x$sg_start
+tarfind_time <- function(x) x$tarfind_end - x$tarfind_start
+
+get_times <- function(x) {
+  data.frame(
+   aha_mont64=mont64_time(x),
+   crc32=crc32_time(x),
+   cubic=cubic_time(x),
+   edn=edn_time(x),
+   huffbench=huffbench_time(x),
+   matmult_int=matmult_time(x),
+   minver=minver_time(x),
+   nbody=nbody_time(x),
+   nettle_aes=nettle_aes_time(x),
+   nettle_sha256=nettle_sha256_time(x),
+   primecount=primecount_time(x),
+   sglib_combined=sg_time(x),
+   st=st_time(x),
+   tarfind=tarfind_time(x),
+   ud=ud_time(x)
+   )
+}
+
+remove_outliers = function(x) x[!x %in% boxplot.stats(x)$out]
+clean_median = function(x) median(remove_outliers(x))
+clean_sd = function(x) sd(remove_outliers(x))
+overhead = function(x,y) ((y-x)/x)*100
+fmt_overhead = function(x,y) sprintf("%0.3f", overhead(x,y))
+fmt_median = function(x) sprintf("%0.3f", x)
+
+####
+
+df <- data.frame(baseline_median=apply(get_times(baseline_raw), 2, clean_median))
+#df$baseline_sd <- apply(get_times(baseline_raw), 2, clean_sd)
+
+df$baseline_pacbti_median <- apply(get_times(baseline_pacbti_raw), 2, clean_median)
+#df$baseline_pacbti_sd <- apply(get_times(baseline_pacbti_raw), 2, clean_sd)
+
+df$blast_median <- apply(get_times(blast_raw), 2, clean_median)
+#df$blast_sd <- apply(get_times(blast_raw), 2, clean_sd)
+
+df$pacbti_median <- apply(get_times(pacbti_raw), 2, clean_median)
+#df$pacbti_sd <- apply(get_times(pacbti_raw), 2, clean_sd)
+
+df$blast_optimised_median <- apply(get_times(blast_optimised_raw), 2, clean_median)
+#df$blast_optimised_sd <- apply(get_times(blast_optimised_raw), 2, clean_sd)
+
+df$baseline_pacbti_overhead <- fmt_overhead(df$baseline_median, df$baseline_pacbti_median)
+df$blast_overhead <- fmt_overhead(df$baseline_median, df$blast_median)
+df$pacbti_overhead <- fmt_overhead(df$baseline_median, df$pacbti_median)
+df$blast_optimised_overhead <- fmt_overhead(df$baseline_median, df$blast_optimised_median)
+df$pacbti_vs_blast <- fmt_overhead(df$blast_median, df$pacbti_median)
+df$blast_optimised_vs_blast <- fmt_overhead(df$blast_median, df$blast_optimised_median)
+
+# fmt median for cleaner table
+df$baseline_median <- fmt_median(df$baseline_median)
+df$baseline_pacbti_median <- fmt_median(df$baseline_pacbti_median)
+df$blast_median <- fmt_median(df$blast_median)
+df$pacbti_median <- fmt_median(df$pacbti_median)
+df$blast_optimised_median <- fmt_median(df$blast_optimised_median)
+
+
+col_names = linebreak(c("Program", " ", "PACBTI", 
+              " ", "PACBTI", "PACBTI (Inter)",
+              "PACBTI", " ", "PACBTI", "PACBTI (Inter)",
+              "PACBTI", "PACBTI (Inter)"))
+
+foot_str = "Samples n=1000 for each program, along with CPU_MHZ=1000."
+
+df %>%
+  kable(caption = "Overheads",
+        format="latex",
+        booktabs = TRUE,
+        col.names = col_names,
+        align = "lrrrrrrrrrrr",
+        format.args = list(big.mark = ",")) %>% 
+  kable_styling(latex_options = "scale_down",
+        bootstrap_options = "striped") %>%
+  row_spec(0, align = "c") %>%
+  footnote(general_title = "Note.", 
+           footnote_as_chunk = TRUE,
+           threeparttable = TRUE,
+           general = foot_str) %>%
+  add_header_above(header = c(" " = 1, "Baseline" = 2, "Blast" = 3, "Baseline" = 1, 
+    "Blast" = 3,"Blast" = 2)) %>%
+  add_header_above(header = c(" " = 1, "Median Runtime" = 5, "Overhead (%) over Baseline" = 4,
+    "Overhead (%) over BLAST" = 2)) %>%
+  landscape()
+```
+
+
+### Benchmark Environment
+
+### Theoretical Boost
+
+### Numbers

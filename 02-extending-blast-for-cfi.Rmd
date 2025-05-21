@@ -52,7 +52,6 @@ Before going forward, we should list out some of our assumptions:
 - OS is not trusted if and only if page management and interrupt handling is mediated
 by the secure monitor.
 - Libraries are instrumented and statically linked to the binary.
-- [...]{highlight="pink"}
 
 ## How to add Integrity guarantees?{#adding-integrity}
 
@@ -137,9 +136,8 @@ but due to PAC, all returns would be authenticated first.
 
 Due to this, we can skip logging each loop iteration which would result in less 
 log entries, and subsequently less number of domain switches. The amount of logging 
-decreased is equal to [TABLE's loop headers column. This comes out to be
-equal to X% of BLAST's entries. The performance benifits are discussed in #eval.
-]{highlight="pink"}
+decreased can be seen in \@ref(tab:logevent-totals).
+The performance benifits are discussed in [3.3 Performance](#performance).
 
 ## Log Levels for control over report granularity
 

@@ -1532,8 +1532,6 @@ Before going forward, we should list out some of our assumptions:
   by the secure monitor.
 \item
   Libraries are instrumented and statically linked to the binary.
-\item
-  \sethlcolor{pink}\hl{\ldots{}}\sethlcolor{correctioncolor}
 \end{itemize}
 
 \section{How to add Integrity guarantees?}\label{adding-integrity}
@@ -1622,8 +1620,8 @@ but due to PAC, all returns would be authenticated first.
 
 Due to this, we can skip logging each loop iteration which would result in less
 log entries, and subsequently less number of domain switches. The amount of logging
-decreased is equal to \sethlcolor{pink}\hl{TABLE's loop headers column. This comes out to be
-equal to X\% of BLAST's entries. The performance benifits are discussed in \#eval.}\sethlcolor{correctioncolor}
+decreased can be seen in \ref{tab:logevent-totals}.
+The performance benifits are discussed in \hyperref[performance]{3.3 Performance}.
 
 \section{Log Levels for control over report granularity}\label{log-levels-for-control-over-report-granularity}
 
@@ -1712,6 +1710,125 @@ integrity and/or performance. Similarly, Data Flow Integrity and Data Flow Attes
 techniques are complementary to this.
 
 \section{Performance}\label{performance}
+
+\begin{table}
+\centering
+\caption{\label{tab:logevents}Number of logging events}
+\centering
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{
+\begin{threeparttable}
+\begin{tabular}[t]{lrrrrr}
+\toprule
+\multicolumn{1}{c}{\makecell[l]{Embench IoT\\Program}} & \multicolumn{1}{c}{\makecell[l]{Conditional\\Branches}} & \multicolumn{1}{c}{\makecell[l]{Unconditional\\Branches}} & \multicolumn{1}{c}{\makecell[l]{Loop\\Headers}} & \multicolumn{1}{c}{\makecell[l]{Function\\Calls}} & \multicolumn{1}{c}{Returns/Exits}\\
+\midrule
+aha-mont64 & 384,507,002 & 456,417,002 & 189,927,000 & 8,460,006 & 8,460,006\\
+crc32 & 174,420,002 & 348,670,002 & 174,250,000 & 174,420,006 & 174,420,006\\
+cubic & 660,007 & 970,003 & 310,000 & 200,006 & 200,006\\
+edn & 371,925,005 & 732,801,003 & 360,876,000 & 696,006 & 696,006\\
+huffbench & 495,825,002 & 486,255,002 & 233,266,000 & 1,078,006 & 1,078,006\\
+\addlinespace
+malmult-int & 406,732,884 & 794,099,724 & 387,366,840 & 92,807 & 92,807\\
+minver & 109,335,036 & 155,955,031 & 56,610,012 & 6,105,006 & 6,105,006\\
+nbody & 6,228,064 & 10,849,050 & 4,621,020 & 101,006 & 101,006\\
+nettle-aes & 78,000,771 & 147,732,515 & 51,168,256 & 858,006 & 858,006\\
+nettle-sha256 & 30,400,019 & 185,250,019 & 24,225,008 & 3,800,006 & 3,800,006\\
+\addlinespace
+primecount & 880,205,002 & 726,973,002 & 282,281,000 & 1,006 & 1,006\\
+sglib-combined & 680,950,108 & 627,474,208 & 144,884,400 & 76,618,308 & 76,618,308\\
+st & 9,204,004 & 18,317,003 & 9,113,000 & 7,904,006 & 7,904,006\\
+tarfind & 80,905,424 & 114,040,424 & 48,400,474 & 36,331,006 & 36,331,006\\
+ud & 412,362,003 & 616,326,003 & 255,694,000 & 1,478,006 & 1,478,006\\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[para]
+\item \textit{Note.} 
+\item The number of events is taken with CPU\_MHZ=1000, a parameter denoting the number of runs of each top-level benchmark function.
+\end{tablenotes}
+\end{threeparttable}}
+\end{table}
+
+\begin{table}
+\centering
+\caption{\label{tab:logevent-totals}Total events}
+\centering
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{
+\begin{threeparttable}
+\begin{tabular}[t]{lrrrr}
+\toprule
+\multicolumn{1}{c}{\makecell[l]{Embench IoT\\Program}} & \multicolumn{1}{c}{CFLAT} & \multicolumn{1}{c}{OAT} & \multicolumn{1}{c}{BLAST} & \multicolumn{1}{c}{\makecell[l]{BLAST\\Inter-Procedure}}\\
+\midrule
+aha-mont64 & 857,844,016 & 392,967,008 & 206,847,012 & 16,920,012\\
+crc32 & 871,930,016 & 348,840,008 & 523,090,012 & 348,840,012\\
+cubic & 2,030,022 & 860,013 & 710,012 & 400,012\\
+edn & 1,106,118,020 & 372,621,011 & 362,268,012 & 1,392,012\\
+huffbench & 984,236,016 & 496,903,008 & 235,422,012 & 2,156,012\\
+\addlinespace
+malmult-int & 1,201,018,222 & 406,825,691 & 387,552,454 & 185,614\\
+minver & 277,500,079 & 115,440,042 & 68,820,024 & 12,210,012\\
+nbody & 17,279,126 & 6,329,070 & 4,823,032 & 202,012\\
+nettle-aes & 227,449,298 & 78,858,777 & 52,884,268 & 1,716,012\\
+nettle-sha256 & 223,250,050 & 34,200,025 & 31,825,020 & 7,600,012\\
+\addlinespace
+primecount & 1,607,180,016 & 880,206,008 & 282,283,012 & 2,012\\
+sglib-combined & 1,461,660,932 & 757,568,416 & 298,121,016 & 153,236,616\\
+st & 43,329,019 & 17,108,010 & 24,921,012 & 15,808,012\\
+tarfind & 267,607,860 & 117,236,430 & 121,062,486 & 72,662,012\\
+ud & 1,031,644,018 & 413,840,009 & 258,650,012 & 2,956,012\\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[para]
+\item \textit{Note.} 
+\item Inter-Procedure log level has median difference of 91.82\% with 46.13\% being 25\% lows.
+\end{tablenotes}
+\end{threeparttable}}
+\end{table}
+
+\begin{landscape}\begin{table}
+\centering
+\caption{\label{tab:cleandata}Overheads}
+\centering
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{
+\begin{threeparttable}
+\begin{tabular}[t]{llrrrrrrrrrr}
+\toprule
+\multicolumn{1}{c}{ } & \multicolumn{5}{c}{Median Runtime} & \multicolumn{4}{c}{Overhead (\%) over Baseline} & \multicolumn{2}{c}{Overhead (\%) over BLAST} \\
+\cmidrule(l{3pt}r{3pt}){2-6} \cmidrule(l{3pt}r{3pt}){7-10} \cmidrule(l{3pt}r{3pt}){11-12}
+\multicolumn{1}{c}{ } & \multicolumn{2}{c}{Baseline} & \multicolumn{3}{c}{Blast} & \multicolumn{1}{c}{Baseline} & \multicolumn{3}{c}{Blast} & \multicolumn{2}{c}{Blast} \\
+\cmidrule(l{3pt}r{3pt}){2-3} \cmidrule(l{3pt}r{3pt}){4-6} \cmidrule(l{3pt}r{3pt}){7-7} \cmidrule(l{3pt}r{3pt}){8-10} \cmidrule(l{3pt}r{3pt}){11-12}
+\multicolumn{1}{c}{Program} & \multicolumn{1}{c}{ } & \multicolumn{1}{c}{PACBTI} & \multicolumn{1}{c}{ } & \multicolumn{1}{c}{PACBTI} & \multicolumn{1}{c}{PACBTI (Inter)} & \multicolumn{1}{c}{PACBTI} & \multicolumn{1}{c}{ } & \multicolumn{1}{c}{PACBTI} & \multicolumn{1}{c}{PACBTI (Inter)} & \multicolumn{1}{c}{PACBTI} & \multicolumn{1}{c}{PACBTI (Inter)}\\
+\midrule
+aha\_mont64 & 3.627 & 3.944 & 33.805 & 33.814 & 13.337 & 8.742 & 831.942 & 832.194 & 267.682 & 0.027 & -60.547\\
+crc32 & 3.774 & 3.798 & 150.801 & 150.655 & 125.211 & 0.646 & 3896.148 & 3892.283 & 3218.025 & -0.097 & -16.969\\
+cubic & 2.375 & 2.475 & 2.930 & 3.260 & 3.237 & 4.211 & 23.387 & 37.307 & 36.306 & 11.282 & 10.470\\
+edn & 7.409 & 7.562 & 52.790 & 52.768 & 16.791 & 2.056 & 612.478 & 612.180 & 126.623 & -0.042 & -68.192\\
+huffbench & 3.884 & 3.821 & 34.731 & 34.742 & 9.941 & -1.610 & 794.324 & 794.605 & 155.972 & 0.031 & -71.378\\
+\addlinespace
+matmult\_int & 4.852 & 4.862 & 56.139 & 56.138 & 12.500 & 0.192 & 1056.936 & 1056.923 & 157.609 & -0.001 & -77.734\\
+minver & 1.902 & 2.012 & 12.987 & 12.984 & 6.675 & 5.763 & 582.675 & 582.528 & 250.877 & -0.021 & -48.603\\
+nbody & 0.256 & 0.277 & 1.221 & 1.221 & 0.886 & 8.112 & 376.768 & 376.730 & 245.942 & -0.008 & -27.440\\
+nettle\_aes & 4.125 & 4.290 & 9.707 & 9.945 & 9.072 & 4.004 & 135.304 & 141.072 & 119.917 & 2.451 & -6.539\\
+nettle\_sha256 & 4.325 & 4.813 & 10.062 & 10.754 & 10.368 & 11.287 & 132.659 & 148.639 & 139.736 & 6.868 & 3.042\\
+\addlinespace
+primecount & 5.689 & 5.689 & 40.998 & 40.997 & 8.870 & 0.004 & 620.629 & 620.608 & 55.912 & -0.003 & -78.364\\
+sglib\_combined & 7.319 & 13.279 & 76.383 & 76.340 & 55.410 & 81.430 & 943.628 & 943.044 & 657.073 & -0.056 & -27.458\\
+st & 0.374 & 0.381 & 7.440 & 7.442 & 6.120 & 1.890 & 1888.866 & 1889.321 & 1536.008 & 0.023 & -17.742\\
+tarfind & 1.487 & 1.486 & 33.499 & 33.489 & 26.504 & -0.079 & 2152.110 & 2151.469 & 1681.834 & -0.028 & -20.882\\
+ud & 5.784 & 5.789 & 38.233 & 38.240 & 13.918 & 0.074 & 560.975 & 561.085 & 140.620 & 0.017 & -63.596\\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}[para]
+\item \textit{Note.} 
+\item Samples n=1000 for each program, along with CPU\_MHZ=1000.
+\end{tablenotes}
+\end{threeparttable}}
+\end{table}
+\end{landscape}
+
+\subsection{Benchmark Environment}\label{benchmark-environment}
+
+\subsection{Theoretical Boost}\label{theoretical-boost}
+
+\subsection{Numbers}\label{numbers}
 
 \chapter{Discussion}\label{discussion}
 
