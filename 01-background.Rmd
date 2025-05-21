@@ -708,9 +708,6 @@ control flow path through the complete program [@blast; @laruswpp].
 This takes the log, that can grow upto MBs or even GBs in size, and converts into 
 a WPP representation that's just a few hundred bytes big.
 
-#### Outcome
-[Edit/Add to this part]{highlight="pink"}
-
 #### Limitations
 The thread responsible of committing the log to TEE would have to run in parallel 
 to the program. Single core settings had an average runtime overhead of 175% 
@@ -725,7 +722,6 @@ This would not be reasonable in certain applications or scenarios like lightweig
 ### CFA+
 
 #### How it works
-
 Similar to BLAST, CFA+ reserves 2 registers, `x27` and `x28`, naming them 
 `RR` and `SR` respectively. They are used to encode/decode the return value in 
 `x30` or the link register to prevent it from tampering.
@@ -812,7 +808,6 @@ cause the caller and callee checks to be executed, and add to the runtime overhe
 External calls to shared libraries are only instrumented at the call sites, with
 no guarantees added to the libraries themselves. So, they have small impact on
 the runtime overhead.
-
 
 #### Limitations
 
