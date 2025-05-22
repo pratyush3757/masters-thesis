@@ -202,6 +202,20 @@ source('scripts_and_filters/install_packages_if_missing.R')
 source('scripts_and_filters/create_chunk_options.R')
 ```
 
+```{r setup_svg}
+## usage: show_fig("filename_without_ext")
+show_fig <- function(f)
+  {if (knitr::is_latex_output())
+  {
+    output = xfun::with_ext(f, 'pdf')
+    rsvg::rsvg_pdf(xfun::with_ext(f,'svg'), file=output)
+  } else {
+    output = xfun::with_ext(f, 'svg')
+  }
+  knitr::include_graphics(output)
+}
+```
+
 <!--
 Include the create_chunk_options chunk above at the top of your index.Rmd file
 This will include code to create additional chunk options (e.g. for adding author references to savequotes)

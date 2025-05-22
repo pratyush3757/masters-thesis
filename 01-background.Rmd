@@ -580,7 +580,7 @@ libraries that use it would be backwards compatible with old processors.
 
 ### ARM TrustZone
 ```{r armtz-arch, fig.cap="ARM TrustZone Architecture", out.width='100%', fig.align='center', fig.pos='H'}
-knitr::include_graphics("./imgs/placeholder-armtz.png")
+knitr::include_graphics("./imgs/armtz.pdf")
 ```
 
 ARM TrustZone [@armtz] is Arm's security architecture in ARM A-profile architecture.
@@ -604,8 +604,8 @@ The states are often written with their exception levels like:
 
 *Note that EL3 is always in Secure State.*
 
-```{r smc-convention, fig.cap="smc instruction call convention", out.width='75%', fig.align='center', fig.pos='H'}
-knitr::include_graphics("./imgs/placeholder-smc-workflow.png")
+```{r smc-convention, fig.cap="smc instruction call convention", out.width='100%', fig.align='center', fig.pos='H'}
+knitr::include_graphics("./imgs/smc-workflow.pdf")
 ```
 
 This isolation is bridged by the usage of Secure Monitor Call (SMC) instruction.
@@ -622,8 +622,8 @@ One example of a Trusted Kernel is OP-TEE. It was developed by ST-Ericsson,
 and is now an open source project maintained by Linaro [@optee].
 The rich applications call OP-TEE Driver through TEE Client API. The Driver 
 is then responsible for the communication with the OP-TEE kernel.
-```{r optee-arch, fig.cap="OP-TEE Architecture", out.width='75%', fig.align='center', fig.pos='H'}
-knitr::include_graphics("./imgs/placeholder-optee.png")
+```{r optee-arch, fig.cap="OP-TEE Architecture", out.width='80%', fig.align='center', fig.pos='H'}
+knitr::include_graphics("./imgs/optee.pdf")
 ```
 
 ## Primary Works
@@ -795,8 +795,6 @@ But, just the returns points are checked, and the libraries themselves are not
 instrumented or protected. As for the logging, all violations are logged by an
 exception handler running in the kernel space. Other details about values needed for
 attestation and when they are logged are not discussed in the paper in much detail.
-
-[working fig.png cfaplus fig 4]{highlight="pink"}
 
 #### Outcome
 CFA+ reports its overall average runtime overhead to be 1.5%. 
