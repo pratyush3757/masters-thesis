@@ -12,32 +12,72 @@ documentclass: book
 # Discussion
 \minitoc <!-- this will include a mini table of contents-->
 
-## Limitations
-[Edit/Add to this part]{highlight="pink"}
+Let us take a look at a few limitations of this work, how it compares to 
+the primary research works, and then discuss the future avenues yet to be explored.
 
+## Limitations
+
+The prototype does not implement whole program path generation, and simply keeps
+a rolling hash of the CFlog. Adding that part may increase the total runtime. We
+should note though, that report generation is not a part of the regular program
+and can be considered a separate operation. The benchmark results still include the
+time spent in the TA for the wrap up, just to give an idea about the overheads
+added as a whole to the process.
+
+The logging on violation part, although mentioned in design has not been implemented yet 
+in the prototype. We rely on the default fault handler to kill the process on encountering
+an illegal instruction. The actual handling can also be implementation dependent 
+and users may choose to recover the execution state instead of killing the process,
+or to simply log and send a report to Vrf.
+
+Some of the assumptions like `W` $\oplus$ `X` are not foolproof and there are 
+proof of concepts exploiting them. We need to decrease the trusted conputing base and the
+assumptions to increase the security guarantees given by this work.
+
+We also could not add CFI measures other than PAC and BTI. Other software or 
+hardware features can be added on top of this to see how they provide security or performance gains.
+MTE was considered, but excluded due to the current state of adoption for these 
+features. Many devices claim to conform to the spec, while skipping on the mandatory features for them.
+Case in point, Apple M1. It claims to be a ARMv8.5-A chip, while not implementing `FEAT_BTI`.
+
+PAC is only enabled if the whole dependency chain also has it enabled. That is, if
+a shared library does not support PAC, it is disabled for the whole program.
+This is specially true for the compiler toolchains. The archive
+files (`libpthread.a` for example) compiler links against should have these
+features enabled for them to be enabled in the final binary. Clang just gives out a
+warning about the feature flag being unused, which may get buried in the compilation logs.
+So we cannot use PAC with pre-compiled binaries that do not have it enabled.
+
+The benchmarking was done on a simulated Aarch64 CPU inside QEMU instead of a 
+hardware board. Thus we have only taken the ratio of baseline code and the 
+instrumented code. The timings may differ a bit on a physical board.
+
+---
+
+We get security guarantees while also giving a choice for Fine to Coarse-grained
+logging for attestation. Our `violation` loglevel is equivalent to CFA+, while also being secure due to
+its dynamic nature of authentication. We saw the flaws in CFA+'s design in [section ref]{highlight="pink"} limitations.
+
+It does not have instrumentation that is vulnerable to static checks and symbolic execution.
+As we enable more logging, it gets easier to detect attacks and stop them as they happen. 
+The TA can be configured to monitor the logs continuously and stop the execution 
+as soon as it detects something anomolous.
+
+Out design's security is dependent on the hardware and not in the software.
+And any flaws (if present) can be rectified in design. 
+Although it makes it harder to fix for already deployed
+systems, the design gets better with time and secure on future devices. 
+
+<!-- ### Future Research{-} -->
+
+When there is a change in the threat model where the attacker may prioritize
+attack results over invisibility, CFA mechanisms seem to fall short while CFI fits the
+role perfectly. Not much research has been done to bring these two facets together,
+and to see how they could both complement each other.
+
+- DRM Scene
+[Edit/Add to this part]{highlight="pink"}
 Although not a limitation in this work, our aim was to add checks in the TEE 
 that would monitor the program execution and if integrity has been violated, 
 abort the execution. We can pursue this further by modifying CFLAT/OAT monitor.
 
-The benchmarks do not include whole program path generation part. 
-
-The logging on violation part, although mentioned has not been implemented yet 
-in the prototype. This can also be implementation dependent and users may choose 
-to abort execution instead of logging.
-
-Some of the assumptions like `W` $\oplus$ `X` are not foolproof and there are 
-proof of concepts exploiting them. We need to decrease the TCB and the 
-assumptions to increase the security guarantees given by this work.
-
-Could not add other CFI measures than PAC and BTI. 
-
-PAC is only enabled if the whole dependency chain also has it enabled so we 
-cannot use PAC with pre-compiled binaries that do not have it enabled.
-
-The benchmarking was done on a simulated Raspberry pi inside qemu instead of a 
-hardware board. Thus we have only taken the ratio of baseline code and the 
-instrumented code. The timings may differ a bit on a physical board.
-
-## Why is it better than CFA+
-
-## Future Research
