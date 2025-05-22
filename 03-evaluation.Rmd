@@ -291,9 +291,81 @@ df %>%
   landscape()
 ```
 
-
 ### Benchmark Environment
+Due to unavailability of hardware, the limited support for the features, we decided
+to use QEMU emulator for evaluation, which has support for the ARM features used
+in the prototype [@qemu].
+The Environment details are as follows:
 
-### Theoretical Boost
+- Host:
+  - Fedora 41 x86-64
+  - Kernel 6.14.4-200
+  - Intel Xeon E-2314 @ 2.80GHz 4 Cores, 4 Threads
+  - 32 GB dual-channel DDR4 ECC memory running at 3200 MT/s
+- Emulator and compilation toolchain:
+  - QEMU 9.2.0 monitor, cpu=max
+  - GCC v12.2.0 aarch64-unknown-linux-gnu-gcc  
+  (crosstool-NG 1.25.0.122_aa6cc4d)
+  - Clang v12.0.0
+  - OP-TEE Buildroot master branch, `db58889dd1` 31-Jan-2025
 
-### Numbers
+Obtained results are expected to be higher compared to physical systems due to
+the emulation. Therefore all the benchmarks including baseline were recorded in
+this environment, to keep the toolchain a control variable.
+
+We ran Embench IoT Programs for benchmarking, mainly due to the same being used in
+evaluating BLAST [@blast] so as to keep uniformity between the works.
+The parameter governing the number of runs of each top-level benchmark function,
+`CPU_MHZ` was set to `1000`, same as reference. While number of binary runs, or samples
+was changed to `100`, increasing from reference's `n=10`.
+
+We ran 5 different versions of the benchmark binaries:
+
+1. Original, called `vBaseline`.
+1. Baseline + (PAC + BTI), called `vBaseline-pacbti`.
+1. Reference BLAST, called `vBlast`
+1. BLAST + (PAC + BTI), called `vBlast-pacbti`
+1. BLAST + PAC + BTI Inter-Procedure Loglevel, removing loop log events. Called `vB-optimised`
+
+### Results
+The results obtained are summarised in table \@ref(tab:cleandata).
+The overhead shown by `vBlast` varies from the original work due to a few reasons:
+
+- Change in toolchain and the benchmark environment. They used a physical Raspberry Pi 3 Model B+.
+- Change in the prototype TA. The original one had hashed the logs using BLAKE2s function.
+It was changed to SHA256 due to builtin API support from OP-TEE, and unavailability of the reference TA source.
+There may be other customizations done by the reference TA unknown to us, which
+may have factored in the performance difference.
+- Time spent in the TA for the initialization and wrap up have been included, which
+may not have been the case for the reference.
+
+Changes between version 2-5 over `vBaseline`, and 4-5 over `vBlast` were taken and were 
+tested using Wilcoxon Signed Ranked Test, which is a non-parametric test to
+check if there is a significant change between two pairs.
+It does not assume normality of data, and is minimally affected by outliers.
+
+Any change that was considered to be insignificant for p-value of `0.05`, has
+been marked as (`**`). And for other values, overhead was calculated using
+$\frac{y - x}{x} \times 100$. Where `x` and `y` are medians of the respective samples.
+
+Let us first discuss the effect of PAC + BTI over the respective baselines (v1 and v3).
+A difference in overheads can be seen when PAC + BTI is added on top of `vBaseline` vs on `vBlast`.
+When the runtimes are low, i.e. shorter burst programs, it adds a significant overhead,
+but in longer running programs, the overhead is either small or insignificant.
+This can be seen in `vBlast-pacbti` vs `vBlast`, where the programs with `>1%` overhead
+are the ones with comparatively smaller runtimes.
+One thing to note is that although the overhead percentage looks big, the runtimes
+are not that different, and the difference is mostly in `< +-1s` range.
+
+Due to the variance in the number of logging events as shown in \@ref(tab:logevent-totals),
+the amount of overhead also varies accordingly, for `vBlast` as well as `vB-optimised`.
+Our interest lies in the overhead of `vB-optimised` over `vBlast`. We see speedups
+in almost all benchmarks, except `cubic` and `nettle_sha256` which saw almost `3-10%`
+slowdown. This can be explained by the fact that both saw `>1%` overhead in
+`vBlast-pacbti` vs `vBlast`. Program `nettle_aes` also saw the effects, having speedup
+in single digit, unlike other programs which had `>10%` speedups.
+
+Overall, we can say that adding integrity guarantees made it possible to remove 
+loop entries from logs, and gave us a performance boost over the BLAST reference.
+We do not get same speedups across the board, but that is expected considering all
+programs are different and have different types of operations affecting the runtimes.
