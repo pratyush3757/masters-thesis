@@ -18,3 +18,56 @@ documentclass: book
 \markboth{Introduction}{}
 ```
 <!-- For PDF output, include these two LaTeX commands after unnumbered chapter headings, otherwise the mini table of contents and the running header will show the previous chapter -->
+
+System security has seen advancements over the decades. But programs still have
+flaws in them that can be exploited by adversaries to gain control. While there
+are many techniques that have been used to mitigate these flaws, we need a way to
+prove in some sense a program ran as intended. A way to provide that evidence of
+runtime integrity comes from Control Flow Attestation (CFA) techniques.
+CFA helps a remote Verifier (Vrf) check the integrity of a target program running
+on the Prover (Prv). Control Flow Integrity (CFI) on the other hand tries to check
+and ensure the integrity of the system locally.
+
+There has been much attention from academia and industry towards CFI schemes that
+aim to mitigate contol flow hijacking attacks through policies that are enforced
+during runtime of a program. The aim at local detection of violations does not
+provide external evidence to gain insights into the program's execution flow [@cfaplus].
+
+CFA has become a promising approach to target this problem.
+A category of CFA is path attestation, where a Prv provides the Vrf with a measurement
+that allows it to precisely determine what control-flow path was taken by the program.
+This provides the Vrf a non-repudiable proof of program execution for a given input.
+
+BLAST [@blast] is a whole program path attestation solution, that aims to attest
+the complete run of a program, at a basic block level. It uses techniques from
+profiling literature to optimise some operations over other CFA schemes, taking
+whole program path attestation from multiple magnitudes of overhead to percent scales.
+It also shows that the amount and method of logging matters a lot for the performance
+of a path attestation scheme.
+
+Most work done in both CFA and CFI has been a parallel line of effort, and not much
+has been done to create a hybrid approach between them which tries to apply them
+in a complementary way [@sok]. CFA+ [@cfaplus] was proposed which tried to bridge
+the gap between these two schemes and provide both local and remote detection for
+control flow violations.
+It uses Branch Target Instructions (BTI) [@arm-pacbti], an ARMv8.5 feature that
+adds landing pads for any jumps in the code, along with software instrumentation
+that ensures that any deviation from the intended path of the program would be detected.
+
+We show that the CFA+ software instrumentation does not help in securing the contol flow
+of the program due to a design flaw. We extend BLAST to add the required integrity
+guarantees. And in the process, explore what positive impact does merging both CFA
+and CFI have. We see that adding integrity to a program's control-flow removes
+the need for collection of execution evidence in some areas, decreasing the logging
+events and giving a performance boost.
+
+We then test this design by modifying the BLAST prototype to use PAC and BTI,
+features from ARMv8.5-A architecture. They both provide integrity against code-reuse
+attacks which are popular due to their effectiveness [@sok].
+The prototype has multiple log levels that are equivalent to CFA+, BLAST and our
+optimised version. The results demonstrate that we can optimise BLAST significantly
+while adding integrity guarantees on top of it.
+
+The added extensions, like BLAST, are platform independent and can be ported over
+to other architectures and CFA schemes provided alternative implementations with
+similar guarantees are used.
