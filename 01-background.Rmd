@@ -807,7 +807,7 @@ External calls to shared libraries are only instrumented at the call sites, with
 no guarantees added to the libraries themselves. So, they have small impact on
 the runtime overhead.
 
-#### Limitations
+#### Limitations{#cfaplus-limitations}
 
 A major flaw in the design is that the IDs that are being checked against are static.
 That is, they won't change between executions or even different copies of the same binary.
@@ -815,8 +815,8 @@ Attackers would be able to figure out the IDs and required values for `SR` and `
 reverse engineering and/or symbolic execution. If `SR`'s value for a given path
 is known, it becomes easy to calculate the needed modifier value to change the
 `LR` in stack so that when it gets "unmasked" with `SR`, it points to a desired address.
-This enables the return to be controlled by the attacker. As returns can jump to `bti j`,
-any such instruction becomes a possible landing pad for it.
+This enables the return to be controlled by the attacker. As returns do not need to
+target `BTI` instructions [@arm-pacbti], attackers can jump to arbitrary points after that.
 
 Similarly, the protection against indirect calls does little to help. Although
 there is a check for the mask value, if an attacker has ability override a register to
@@ -840,7 +840,7 @@ In contrast, the current design of CFA+ is transparent, i.e.,
 secret-independent, resulting in a smaller attack surface." [@cfaplus - Section 7].
 
 Logging for attestation is either done on violation, or on demand from the Vrf. And in both cases,
-the value of `SR` `RR` and `PC` are recorded. The Vrf performs a satisfiability check,
+the value of `SR`, `RR` and `PC` are recorded. The Vrf performs a satisfiability check,
 followed by `RR` consistency check for the paths, and a `SR` + `PC` consistency check.
 If there is at-least one valid path found, the program is concluded to be benign.
 As the logging is on-demand, an attacker may take control after the readings are taken,
