@@ -203,7 +203,7 @@ Additionally, CFLAT also have events for Unconditional Branches and Direct funct
 All of these events has a domain transition to TEE for logging. Which, when large codebases
 are taken in account, can become a performace bottleneck due to the sheer number of them [@blast].
 
-[?? TABLE]{highlight="pink"} describes the number of TEE domain switches at runtime,
+Table \@ref(tab:logevent-totals) describes the number of TEE domain switches at runtime,
 as seen for CFLAT and OAT for Embench-IOT benchmarks, when applied to whole programs.
 It also shows the amount of extensive instrumentation that is needed for path attestation. 
 Despite such intrusive amount of instrumentation, which also translates into 

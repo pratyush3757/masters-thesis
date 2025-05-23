@@ -1,6 +1,22 @@
-\item[1-D, 2-D] One- or two-dimensional, referring **in this thesis** to spatial dimensions in an image.
-
-\item[Otter] One of the finest of water mammals.
-
-\item[Hedgehog] Quite a nice prickly friend.
-
+\item[ASLR] Address Space Layout Randomisation
+\item[BTI] Branch Target Identification
+\item[CFA] Control Flow Attestation
+\item[CFG] Control Flow Graph
+\item[CFI] Control Flow Integrity
+\item[CFlog] Control Flow Log
+\item[CFreport] Control Flow Report
+\item[DEP] Data Execution Prevention
+\item[ISA] Instruction Set Architecture
+\item[JOP] Jump Oriented Programming
+\item[MTE] Memory Tagging Extension
+\item[PAC] Pointer Authentication Code
+\item[Prv] Prover
+\item[REE] Rich Execution Environment
+\item[ROP] Return Oriented Programming
+\item[RoT] Root of Trust
+\item[SFI] Software Fault Isolation
+\item[SMC] Secure Monitor Call
+\item[TA] Trusted Application
+\item[TEE] Trusted Execution Environment
+\item[Vrf] Verifier
+\item[WPP] Whole Program Paths
