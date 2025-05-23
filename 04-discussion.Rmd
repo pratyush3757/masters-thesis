@@ -15,7 +15,7 @@ documentclass: book
 Let us take a look at a few limitations of this work, how it compares to 
 the primary research works, and then discuss the future avenues yet to be explored.
 
-## Limitations
+### Limitations{-}
 
 The prototype does not implement whole program path generation, and simply keeps
 a rolling hash of the CFlog. Adding that part may increase the total runtime. We
@@ -54,30 +54,63 @@ instrumented code. The timings may differ a bit on a physical board.
 
 ---
 
-We get security guarantees while also giving a choice for Fine to Coarse-grained
-logging for attestation. Our `violation` loglevel is equivalent to CFA+, while also being secure due to
-its dynamic nature of authentication. We saw the flaws in CFA+'s design in [section ref]{highlight="pink"} limitations.
-
-It does not have instrumentation that is vulnerable to static checks and symbolic execution.
-As we enable more logging, it gets easier to detect attacks and stop them as they happen. 
-The TA can be configured to monitor the logs continuously and stop the execution 
-as soon as it detects something anomolous.
-
-Out design's security is dependent on the hardware and not in the software.
-And any flaws (if present) can be rectified in design. 
-Although it makes it harder to fix for already deployed
-systems, the design gets better with time and secure on future devices. 
-
-<!-- ### Future Research{-} -->
-
 When there is a change in the threat model where the attacker may prioritize
 attack results over invisibility, CFA mechanisms seem to fall short while CFI fits the
 role perfectly. Not much research has been done to bring these two facets together,
-and to see how they could both complement each other.
+and to see how they could both complement each other [@sok].
 
-- DRM Scene
-[Edit/Add to this part]{highlight="pink"}
-Although not a limitation in this work, our aim was to add checks in the TEE 
-that would monitor the program execution and if integrity has been violated, 
-abort the execution. We can pursue this further by modifying CFLAT/OAT monitor.
+CFA+ tries to bridge the gap between CFI and CFA, but it makes attacks a bit harder,
+but not impossible to perform due to the design issues discussed in section
+[1.3.2 CFA+ Limitations](#cfaplus-limitations).
 
+Our work gives security guarantees while also giving a choice for Fine to Coarse-grained
+logging for attestation. Our `Violation` loglevel is equivalent to CFA+, 
+while also being secure due to its dynamic nature of pointer authentication.
+And therefore the instrumentation is not vulnerable to static checks and symbolic execution.
+
+As we go for more verbose log levels, it gets easier to detect attacks and stop
+them as they happen. The TA can be configured to monitor the logs continuously 
+and stop the execution as soon as it detects something anomolous.
+
+Talking about loglevels, as seen in the results, adding integrity features on top
+of BLAST had a low effect on performance. This means that the `Full` loglevel
+can be used as is, while changing to `Optimised` could give a performance boost over it.
+We also preserve guarantees given by BLAST, and just add more on top of them.
+
+Note that the concepts used are portable, and any alternative feature that gives
+similar guarantees can be used. So even though flawed PAC or BTI implementations
+would affect the security of the binary, they can be replaced by other similar methods.
+This is also true for the target ISA. These concepts - as with BLAST - can be ported
+over to other architectures if similar features are present. These concepts can also
+be used to complement other CFA and CFI techniques to gain performance and integrity guarantees.
+
+Our *current prototype's* security is dependent on the ARM hardware and not in the software.
+And any flaws (if present) can be rectified in implementation design. Although this makes
+vulnerabilities harder to fix for already deployed systems, the design gets better 
+with time and secure on future devices.
+
+<!-- ### Future Research{-} -->
+
+The idea behind this work was that if the Vrf has the expected control flow, why
+not share it with the RoT on the Prv, which would be able to prevent anomalies
+immediately instead of reporting the damage later on.
+The goal would then be to add modifications to the TEE which would get the expected
+control flow along with the input, monitor the program execution, and take action 
+if the integrity has been violated. This was an experiment towards that goal, and we can
+pursue this further by modifying CFLAT/OAT monitors to provide this functionality.
+If it succeeds, that solution can be used in critical-systems where it could
+guarantee that either the program ran "correctly", or it did not run at all.
+
+One area that can also provide further insipiration is the Digital Rights Management
+(DRM) scene. Especially the software and game DRM categories. The work done there
+is similar, where the binaries have integrity checks for all program files, and
+some kind of attestation where program states are sent over to remote servers
+for various reasons like licensing and anti-cheat. This may be hard to do as most
+research in that area is classified to keep it from being bypassed.
+
+While CFI is popular in security community and industry alike, CFA has many areas
+left to be researched upon. Compiler optimisations support specially for CFA,
+instrumentation compatibility, CFA for complex programs, and attestation evidence
+storage optimisation are some of the open problems worth looking into.
+Ammar et al.[@sok] go into more detail on current state of things and open problems
+waiting to be solved.

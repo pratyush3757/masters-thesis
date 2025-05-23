@@ -40,18 +40,37 @@ each other's disadvantages. For example, adding integrity to some parts of the
 code would remove the need for logging those parts, decreasing the runtime overhead
 due to attestation, which is a common problem in the CFA literature [@sok].
 
-[CFA+ is there, but the limitations are listed, we need better solution.]{highlight="pink"}
+The idea that inspired this work is the question that if the Vrf has knowledge (in some way) 
+of the expected control ﬂow, it can share the expectation with the RoT on the Prv,
+which would be able to prevent anomalies immediately instead of reporting after
+the damage has been done. The goal would then be to add modiﬁcations to the TEE
+which would get the expected control ﬂow along with the input, monitor the program
+execution, and take action if the integrity has been violated. 
+This work is an experiment towards that goal.
 
-[Also write about the constant monitor for input idea. BLAST is experiment in that direction]{highlight="pink"}
+CFA+ has done some work in that regard, but their design has some flaws discussed in
+section [1.3.2 CFA+ Limitations](#cfaplus-limitations) which make it vulnerable to attacks.
 
 Before going forward, we should list out some of our assumptions:
 
-- Write XOR Execute (`W` $\oplus$ `X`) is enabled on pages. Code injection/modification in not possible.
-- Hardware is implicitly trusted.
-- Communication between Vrf and Prv is secure.
+- Data Execution Prevention (DEP) or Write XOR Execute (`W` $\oplus$ `X`) is enabled
+on pages. Code injection/modification in not possible.
+DEP being enabled is a common assumption in CFI and CFA literature, to protect
+the integrity of the instrumentation and to avoid code injection [@sok].
+- Hardware is implicitly trusted. Any attacks on hardware, or it being malicious
+would remove any trust anchors in the system.
+- Communication between Vrf and Prv is secure. Insecure communication is considered
+a problem unrelated to the one at hand. A malicious actor spoofing the Vrf could
+run any program, and similarly spoof Prv to give a fake report.
 - OS is not trusted if and only if page management and interrupt handling is mediated
-by the secure monitor.
-- Libraries are instrumented and statically linked to the binary.
+by the secure monitor. This is because a malicious or compromised OS could easily
+replace register values and other sensitive data needed for attestation. It could also
+remove DEP protections, enabling code injection attacks.
+- Libraries are instrumented and statically linked to the binary. Handling shared
+libraries adds another level of complexity, and is not considered by many defences
+[@cfaplus]. Also, PAC does not support partially enabled toolchains. i.e. All
+linked libraries should have PAC enabled for it to be enabled for a binary.
+Instrumenting and statically linking libraries would ensure this feature is enabled.
 
 ## How to add Integrity guarantees?{#adding-integrity}
 
@@ -61,6 +80,13 @@ We will talk about preventing control flow hijacking attacks first.
 The two main categories of control flow hijacking attacks are: ROP and JOP.
 We have talked about them in ARM Specifics [1.2.2 - PAC](#pac-bg) and [1.2.3 - BTI](#bti-bg) respectively.
 
+`BTI` instructions act as landing pads for branch targets. Any jump not landing on a `BTI`
+instruction would generate a Branch Target Exception. Function returns are also a
+type of indirect branch, but they aren’t required to target the landing pads. 
+The returns are secured by pointer authentication.
+Also, for function entry, pointer signing instructions `PACIxSP` and `PACIxZ` act like
+landing pads.
+
 Adding BTI to a binary would prevent JOP attacks disabling an attacker from changing
 the control flow of the program and corrupting the forward edges of the CFG.
 Use of `BR`, `BLR` and similar instructions to pivot to arbitrary code would generate hardware 
@@ -68,14 +94,19 @@ level exceptions, which could then be logged and handled appropriately.
 
 Similarly, adding PAC to a binary would prevent ROP attacks, disabling corruption 
 of backward egdes of the CFG.
+At the start of the function, the `LR` is signed. And it is authenticated just
+before the return. If the check fails, an exception is raised.
 Use of `RET` instructions to chain gadgets to run arbitrary code would become hard
 as all returns would be preceded by an address check. Failing which would generate
-a hardware level exception.
+a hardware level exception. To perform a ROP attack, attacker would need properly
+signed addresses. And this whole process is dynamic in nature, so everytime the
+program runs, keys for signing are different, forcing the attacker to calculate the
+signatures again.
 
-[
-cfa would detect ...  
-As for data only attacks, CFA part would handle it. how? repeat this ans in #qual eval
-]{highlight="pink"}
+The CFA instrumentation would detect any deviation from the CFG, including for 
+data attacks [@blast]. Further adding security to the control flow, as the TA can be 
+configured to monitor the state of the program and take action when any anomaly
+is detected.
 
 We can also optionally enable Memory Tagging Extension (MTE), or memory coloring,
 an Armv8.5-A extension [@arm-pacbti]. It enables detection of memory safety violations like use after free
@@ -111,8 +142,6 @@ it drops to 1.61% [@arm-pacbti].
 This overhead is less significant when compared to BLAST instrumentation, which
 came to 64% without inlining [@blast].
 
-[We will discuss this further in #eval after we implement extended BLAST.]{highlight="pink"}
-
 #### What is our target compatibility?
 
 As mentioned previously, PAC and BTI can be backwards compatible with ARMv8-A processors
@@ -136,7 +165,7 @@ but due to PAC, all returns would be authenticated first.
 
 Due to this, we can skip logging each loop iteration which would result in less 
 log entries, and subsequently less number of domain switches. The amount of logging 
-decreased can be seen in \@ref(tab:logevent-totals).
+decreased can be seen in table \@ref(tab:logevent-totals).
 The performance benifits are discussed in [3.3 Performance](#performance).
 
 ## Log Levels for control over report granularity
@@ -146,9 +175,18 @@ Or what if we need more performance out of extended BLAST at the cost of CFlog g
 
 We can add log levels to BLAST then. These are:
 
-- *Violation*: Coarse-grained. Only PAC/BTI faults are logged and handled.
-- *Inter-procedure*: Extended BLAST. Loop events aren't logged.
-- *Intra-procedure*: Fine-grained. Original BLAST. Loop events are logged at cost of performance.
+- *Violation*: Coarse-grained. Only PAC/BTI faults are logged and handled. Equivalent to CFA+.
+- *Optimised*: Extended BLAST. Loop events aren't logged. Balanced performance and granularity.
+- *Full*: Fine-grained. Loop events are logged at cost of performance. Equivalent to reference BLAST.
 
 One thing to note here is that, BLAST instrumentation is added statically to the binary.
 This means the log levels are set at compile time, and cannot be changed at runtime.
+
+`Violation` log level would have the least amount of evidence collected for attestation,
+with only faults logged. This would have the best performance out of the three levels
+at the cost of attestation evidence granularity. Looking at CFA+, it can be considered
+similar to `Violation` level here. Users can choose `Full` level
+for when they need block level fine grained evidence, same as reference BLAST.
+It would also be the slowest level, but with the most information given to the Vrf.
+`Optimised` level would be a balance between the two, by gaining performance
+only at the cost of not being able to log the number of loop iterations.

@@ -324,8 +324,8 @@ We ran 5 different versions of the benchmark binaries:
 1. Original, called `vBaseline`.
 1. Baseline + (PAC + BTI), called `vBaseline-pacbti`.
 1. Reference BLAST, called `vBlast`
-1. BLAST + (PAC + BTI), called `vBlast-pacbti`
-1. BLAST + PAC + BTI Inter-Procedure Loglevel, removing loop log events. Called `vB-optimised`
+1. `vBlast` + (PAC + BTI), called `vBlast-pacbti`
+1. `vBlast-pacbti` at Optimised loglevel, removing loop log events. Called `vB-optimised`
 
 ### Results
 The results obtained are summarised in table \@ref(tab:cleandata).
