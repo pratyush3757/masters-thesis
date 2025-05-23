@@ -41,7 +41,7 @@ output:
 #####################
 ## thesis metadata ##
 #####################
-title: Extending Whole Program CFA for Integrity
+title: Towards Secure and Fast Control Flow Attestation with Integrity
 author: Pratyush Choudhary
 college: Indian Institute of Technology Gandhinagar
 #university: Indian Institute of Technology Gandhinagar
@@ -189,6 +189,11 @@ documentclass: book
 always_allow_html: true #this allows html stuff in word (.docx) output
 ---
 
+```{r setup, include=FALSE}
+# don't show code unless we explicitly set echo = TRUE
+knitr::opts_chunk$set(echo = FALSE)
+```
+
 ```{r stop-tex-updates}
 # this line ensures that tinytex doesn't try to update LaTeX packages on every single knit
 options(tinytex.tlmgr_update = FALSE)
@@ -226,7 +231,3 @@ If you need to create your own additional chunk options, edit the file scripts/c
 ```{r ebook-welcome, child = 'front-and-back-matter/_welcome-ebook.Rmd', eval=knitr::is_html_output()}
 ```
 
-```{r setup, include=FALSE}
-# don't show code unless we explicitly set echo = TRUE
-knitr::opts_chunk$set(echo = FALSE)
-```
