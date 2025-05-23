@@ -9,8 +9,7 @@ documentclass: book
 #bibliography: [bibliography/references.bib, bibliography/additional-references.bib]
 ---
 
-# Discussion
-\minitoc <!-- this will include a mini table of contents-->
+# Discussion and Conclusion
 
 Let us take a look at a few limitations of this work, how it compares to 
 the primary research works, and then discuss the future avenues yet to be explored.
@@ -91,15 +90,13 @@ with time and secure on future devices.
 
 <!-- ### Future Research{-} -->
 
-The idea behind this work was that if the Vrf has the expected control flow, why
-not share it with the RoT on the Prv, which would be able to prevent anomalies
-immediately instead of reporting the damage later on.
-The goal would then be to add modifications to the TEE which would get the expected
-control flow along with the input, monitor the program execution, and take action 
-if the integrity has been violated. This was an experiment towards that goal, and we can
-pursue this further by modifying CFLAT/OAT monitors to provide this functionality.
-If it succeeds, that solution can be used in critical-systems where it could
-guarantee that either the program ran "correctly", or it did not run at all.
+
+While CFI is popular in security community and industry alike, CFA has many areas
+left to be researched upon. Compiler optimisations support specially for CFA,
+instrumentation compatibility, CFA for complex programs, and attestation evidence
+storage optimisation are some of the open problems worth looking into.
+Ammar et al.[@sok] go into more detail on current state of things and open problems
+waiting to be solved.
 
 One area that can also provide further insipiration is the Digital Rights Management
 (DRM) scene. Especially the software and game DRM categories. The work done there
@@ -108,9 +105,14 @@ some kind of attestation where program states are sent over to remote servers
 for various reasons like licensing and anti-cheat. This may be hard to do as most
 research in that area is classified to keep it from being bypassed.
 
-While CFI is popular in security community and industry alike, CFA has many areas
-left to be researched upon. Compiler optimisations support specially for CFA,
-instrumentation compatibility, CFA for complex programs, and attestation evidence
-storage optimisation are some of the open problems worth looking into.
-Ammar et al.[@sok] go into more detail on current state of things and open problems
-waiting to be solved.
+The idea behind this work was that if the Vrf has the expected control flow, why
+not share it with the RoT on the Prv, which would be able to prevent anomalies
+immediately instead of reporting the damage later on.
+The goal would then be to add modifications to the TEE which would get the expected
+control flow along with the input, monitor the program execution, and take action 
+if the integrity has been violated.
+We can pursue this goal further by modifying CFLAT/OAT monitors to provide this 
+functionality. If it succeeds, that solution can be used in critical-systems where it could
+guarantee that either the program ran "correctly", or it did not run at all.
+This work was a step towards the ideal of a hybrid scheme that performs
+local verification to provide integrity to critical-systems.
