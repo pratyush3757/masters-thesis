@@ -1,5 +1,11 @@
-This *R Markdown* template is for writing an Oxford University thesis. The template is built using Yihui Xie's `bookdown` package, with heavy inspiration from Chester Ismay's `thesisdown` and the `OxThesis` \LaTeX\ template (most recently adapted by John McManigle).
-
-This template's sample content include illustrations of how to write a thesis in R Markdown, and largely follows the structure from [this R Markdown workshop](https://ulyngs.github.io/rmarkdown-workshop-2019/).
-
-Congratulations for taking a step further into the lands of open, reproducible science by writing your thesis using a tool that allows you to transparently include tables and dynamically generated plots directly from the underlying data. Hip hooray!
+Programs have vulnerabilities in them that allow adversaries to take control of
+the program. The order of execution of instructions in a program for a given input
+is called the program control-flow. CFA mechanisms aim to provide an evidence of
+program execution integrity, while CFI mechanisms aim to enforce execution integrity.
+Work in both fields has been mostly a parallel endeavour. Hybrid approaches have not
+yet been explored properly. CFA+ proposed a solution bridging this gap. We identify
+flaws in CFA+ design that make it vulnerable. We extend BLAST, a whole program
+CFA scheme to add integrity guarantees. We see an avenue to optimise it due to
+the hybrid approach, and test a solution that is faster and more secure than BLAST.
+This work is a step towards the ideal of a hybrid scheme that performs
+local verification to provide integrity to critical-systems.
